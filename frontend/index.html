@@ -829,6 +829,12 @@ const res = await fetch('/api/devices', {
         async function refreshAllDevices() {
             const btns = document.querySelectorAll('.btn-toggle');
             btns.forEach(btn => { btn.disabled = true; btn.textContent = '...'; });
+            const accountId = document.getElementById('accountSelect').value;
+            await fetch('/api/devices/refresh', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({account_id: accountId || null})
+            });
             await loadDevices();
             showAlert('Device status refreshed', false);
         }

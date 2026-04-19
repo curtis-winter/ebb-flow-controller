@@ -90,6 +90,10 @@ def init_db():
         conn.execute('ALTER TABLE devices ADD COLUMN child_id TEXT')
     except:
         pass
+    try:
+        conn.execute('ALTER TABLE devices ADD COLUMN is_on INTEGER DEFAULT 0')
+    except:
+        pass
     conn.execute('''
         CREATE TABLE IF NOT EXISTS racks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -198,6 +202,33 @@ def delete_account(account_id):
     conn.execute('DELETE FROM accounts WHERE id = ?', (account_id,))
     conn.commit()
     conn.close()
+    return jsonify({'success': True})
+
+@app.route('/api/devices/refresh', methods=['POST'])
+def refresh_devices():
+    account_id = request.json.get('account_id') if request.is_json else None
+    conn = get_db()
+
+    if account_id:
+        devices = conn.execute('SELECT * FROM devices WHERE account_id = ?', (account_id,)).fetchall()
+    else:
+        devices = conn.execute('SELECT * FROM devices').fetchall()
+
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    for device in devices:
+        if device['account_id'] and device['ip_address']:
+            creds = get_account_credentials(device['account_id'])
+            try:
+                state = loop.run_until_complete(_get_device_state(creds, device['ip_address'], device['child_id']))
+                if state is not None:
+                    conn.execute('UPDATE devices SET is_on = ? WHERE id = ?', (state, device['id']))
+            except Exception as e:
+                logging.error(f"Refresh error for device {device['id']}: {e}")
+
+    conn.commit()
+    loop.close()
     return jsonify({'success': True})
 
 @app.route('/api/devices', methods=['GET'])
