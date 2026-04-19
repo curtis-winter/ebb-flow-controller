@@ -224,7 +224,8 @@ def delete_account(account_id):
     return jsonify({'success': True})
 
 @app.route('/api/devices/refresh', methods=['POST'])
-def refresh_devices():
+@run_async
+async def refresh_devices():
     account_id = request.json.get('account_id') if request.is_json else None
     conn = get_db()
 
@@ -233,21 +234,17 @@ def refresh_devices():
     else:
         devices = conn.execute('SELECT * FROM devices').fetchall()
 
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
     for device in devices:
         if device['account_id'] and device['ip_address']:
             creds = get_account_credentials(device['account_id'])
             try:
-                state = loop.run_until_complete(_get_device_state(creds, device['ip_address'], device['child_id']))
+                state = await _get_device_state(creds, device['ip_address'], device['child_id'])
                 if state is not None:
                     conn.execute('UPDATE devices SET is_on = ? WHERE id = ?', (state, device['id']))
             except Exception as e:
                 logging.error(f"Refresh error for device {device['id']}: {e}")
 
     conn.commit()
-    loop.close()
     return jsonify({'success': True})
 
 @app.route('/api/devices', methods=['GET'])
