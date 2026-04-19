@@ -234,15 +234,18 @@ async def refresh_devices():
     else:
         devices = conn.execute('SELECT * FROM devices').fetchall()
 
-    for device in devices:
-        if device['account_id'] and device['ip_address']:
-            creds = get_account_credentials(device['account_id'])
-            try:
-                state = await _get_device_state(creds, device['ip_address'], device['child_id'])
-                if state is not None:
-                    conn.execute('UPDATE devices SET is_on = ? WHERE id = ?', (state, device['id']))
-            except Exception as e:
-                logging.error(f"Refresh error for device {device['id']}: {e}")
+        for device in devices:
+            if device['account_id'] and device['ip_address']:
+                creds = get_account_credentials(device['account_id'])
+                try:
+                    state = await _get_device_state(creds, device['ip_address'], device['child_id'])
+                    if state is not None:
+                        conn.execute('UPDATE devices SET is_on = ? WHERE id = ?', (state, device['id']))
+                except Exception as e:
+                    if "Event loop is closed" in str(e):
+                        logging.error(f"Refresh error for device {device['id']}: Event loop issue - {e}")
+                    else:
+                        logging.error(f"Refresh error for device {device['id']}: {e}")
 
     conn.commit()
     return jsonify({'success': True})
@@ -392,7 +395,14 @@ async def _get_device_state(credentials, parent_ip, child_id):
                 await plug.update()
             except Exception as e:
                 logging.error(f"Attempt {attempt+1}: Error getting state with V2: {e}")
-                await asyncio.sleep(2)
+                try:
+                    await asyncio.sleep(2)
+                except Exception as sleep_e:
+                    if "Event loop is closed" in str(sleep_e):
+                        logging.error(f"Attempt {attempt+1}: Event loop is closed during sleep, breaking out of retry loop")
+                        break
+                    else:
+                        logging.error(f"Attempt {attempt+1}: Error during sleep: {sleep_e}")
                 plug = await Discover.discover_single(parent_ip, credentials=credentials, port=9999)
                 await plug.update()
             
