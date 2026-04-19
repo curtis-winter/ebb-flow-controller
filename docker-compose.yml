@@ -2,6 +2,7 @@ services:
   app:
     build: .
     container_name: flowboard
+    network_mode: host
     ports:
       - "9731:9731"
     volumes:

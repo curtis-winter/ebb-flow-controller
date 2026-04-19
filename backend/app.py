@@ -278,11 +278,8 @@ async def discover_devices():
             }
 
     conn = get_db()
-    existing = {row['ip_address']: row for row in conn.execute('SELECT * FROM devices').fetchall()}
     conn.close()
-
-    new_devices = {ip: data for ip, data in result.items() if ip not in existing}
-    return jsonify(new_devices)
+    return jsonify(result)
 
 @app.route('/api/devices', methods=['POST'])
 @run_async
@@ -296,50 +293,77 @@ async def add_device():
 
     credentials = get_account_credentials(account_id) if account_id else None
 
+    # Primary discovery – this populates plug.children
     try:
         plug = await Discover.discover_single(ip, credentials=credentials)
         await plug.update()
     except Exception as e:
+        # Fallback only if primary fails – still try to get children on primary port afterwards
         try:
             plug = await Discover.discover_single(ip, credentials=credentials, port=9999)
             await plug.update()
         except Exception as e2:
             logging.error(f"Error getting device info for {ip}: {e}, fallback also failed: {e2}")
-            device_info = {'devices': [{'name': 'Unknown Device', 'mac': '', 'model': '', 'child_id': None}], 'is_parent': False}
-            children = []
-        children = getattr(plug, 'children', []) or []
-        if children:
-            devices = []
-            for i, child in enumerate(children):
-                await child.update()
-                name = child.alias or f"Plug {i+1}"
-                devices.append({
-                    'name': name,
-                    'mac': child.mac,
-                    'model': child.model,
-                    'child_id': child.device_id
-                })
-            device_info = {'devices': devices, 'is_parent': True}
-        else:
-            name = plug.alias or plug.model or 'Smart Outlet'
-            device_info = {'devices': [{'name': name, 'mac': plug.mac, 'model': plug.model, 'child_id': None}], 'is_parent': False}
-    except Exception as e:
-        logging.error(f"Error getting device info for {ip}: {e}")
-        device_info = {'devices': [{'name': 'Unknown Device', 'mac': '', 'model': '', 'child_id': None}], 'is_parent': False}
+            plug = None
 
+    if not plug:
+        return jsonify({'error': 'Unable to discover device'}), 500
+
+    # Ensure we have a children list (populated from primary discovery)
+    children = getattr(plug, 'children', [])
+    if not children:
+        # Try once more on the normal port to get children information
+        try:
+            temp = await Discover.discover_single(ip, credentials=credentials)
+            await temp.update()
+            children = getattr(temp, 'children', [])
+        except Exception:
+            pass
+
+    # Build device payload: parent + all children
+    parent_dev = {
+        'name': plug.alias or 'Smart Outlet',
+        'mac_address': plug.mac,
+        'model': plug.model,
+        'child_id': None,
+    }
+
+    child_devs = []
+    for child in children:
+        child_devs.append({
+            'name': child.alias or f'Child {child.device_id}',
+            'mac_address': child.mac,
+            'model': child.model,
+            'child_id': child.device_id,
+        })
+
+    device_payload = [parent_dev] + child_devs
+
+    # Insert each device into the DB
     conn = get_db()
     added_ids = []
-    for dev in device_info['devices']:
+    for dev in device_payload:
         try:
             conn.execute(
-                'INSERT INTO devices (account_id, name, ip_address, mac_address, model, child_id) VALUES (?, ?, ?, ?, ?, ?)',
-                (account_id, dev['name'], ip, dev['mac'], dev['model'], dev['child_id'])
+                'INSERT INTO devices (account_id, name, ip_address, mac_address, model, child_id) '
+                'VALUES (?,?,?,?,?,?)',
+                (account_id, dev['name'], ip, dev['mac_address'], dev['model'], dev.get('child_id'))
             )
             conn.commit()
-            device_id = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
-            added_ids.append({'id': device_id, 'name': dev['name'], 'ip_address': ip})
+            new_id = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
+            added_ids.append({'id': new_id, 'name': dev['name'], 'ip_address': ip})
         except sqlite3.IntegrityError:
             pass
+    conn.close()
+
+    # Create component rows linking each child to its parent entry
+    for child in child_devs:
+        conn.execute(
+            'INSERT INTO components (parent_type, parent_id, device_id, component_type, name) '
+            'VALUES (?,?,?,?,"Child device")',
+            ('device', child['child_id'], child['child_id'], 'pump')
+        )
+    conn.commit()
     conn.close()
 
     if not added_ids:
