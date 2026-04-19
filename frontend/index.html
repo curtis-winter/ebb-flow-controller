@@ -54,6 +54,16 @@
         .modal-row { margin-bottom: 12px; }
         .modal-row label { display: block; margin-bottom: 6px; color: var(--text-secondary); font-size: 14px; }
         .modal-actions { display: flex; gap: 12px; justify-content: flex-end; }
+        
+        /* Tabs */
+        .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 24px; }
+        .tab { padding: 12px 24px; cursor: pointer; border: none; background: none; color: var(--text-secondary); font-size: 15px; font-weight: 500; position: relative; }
+        .tab:hover { color: var(--text-primary); }
+        .tab.active { color: var(--primary); }
+        .tab.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px; background: var(--primary); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
         @media (max-width: 640px) { .devices-grid { grid-template-columns: 1fr; } header { flex-direction: column; align-items: flex-start; } .header-actions { width: 100%; flex-wrap: wrap; } }
     </style>
 </head>
@@ -61,7 +71,16 @@
     <div class="container">
         <header>
             <h1>EBB Flow Controller</h1>
-            <div class="header-actions">
+        </header>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="showTab('smart-devices')">Smart Device Configuration</button>
+            <button class="tab" onclick="showTab('grow-layout')">Grow Layout Configuration</button>
+            <button class="tab" onclick="showTab('grow-schedule')">Grow Schedule Configuration</button>
+        </div>
+        
+        <div id="tab-smart-devices" class="tab-content active">
+            <div class="header-actions" style="margin-bottom: 20px;">
                 <select class="account-select" id="accountSelect" onchange="loadDevices()">
                     <option value="">Select Account</option>
                 </select>
@@ -70,8 +89,16 @@
                 <button class="btn-secondary" onclick="showDiscoverModal()">Scan</button>
                 <button class="btn-secondary" onclick="showAddModal()">Add Device</button>
             </div>
-        </header>
-        <div class="devices-grid" id="devicesGrid"></div>
+            <div class="devices-grid" id="devicesGrid"></div>
+        </div>
+        
+        <div id="tab-grow-layout" class="tab-content">
+            <p style="color: var(--text-secondary);">Grow layout configuration coming soon...</p>
+        </div>
+        
+        <div id="tab-grow-schedule" class="tab-content">
+            <p style="color: var(--text-secondary);">Grow schedule configuration coming soon...</p>
+        </div>
     </div>
 
     <div class="modal-overlay" id="accountModal">
@@ -143,6 +170,13 @@
 
     <script>
         let devices = [];
+
+        function showTab(tabId) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('tab-' + tabId).classList.add('active');
+        }
 
         function showAccountModal() { document.getElementById('accountModal').classList.add('active'); document.getElementById('accountName').focus(); }
         function showAddModal() { document.getElementById('addModal').classList.add('active'); document.getElementById('deviceIp').focus(); }
