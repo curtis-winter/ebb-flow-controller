@@ -252,10 +252,10 @@
     <div class="modal-overlay" id="rackModal">
         <div class="modal">
             <h2 id="rackModalLabel">New Grow Rack</h2>
-            <div class="modal-row">
-                <label>Rack Name</label>
-                <input type="text" class="modal-input" id="rackName" placeholder="e.g., Main Rack">
-            </div>
+        <div class="modal-row">
+            <label>Rack Name</label>
+            <input type="text" class="modal-input" id="rackName" placeholder="e.g., Main Rack" onkeydown="if (event.key === 'Enter') { createOrUpdateRack(); }">
+        </div>
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="hideModals()">Cancel</button>
                 <button class="btn-primary" onclick="createOrUpdateRack()">Save</button>
@@ -266,10 +266,10 @@
     <div class="modal-overlay" id="shelfModal">
         <div class="modal">
             <h2 id="shelfModalLabel">Add Shelf</h2>
-            <div class="modal-row">
-                <label>Shelf Name</label>
-                <input type="text" class="modal-input" id="shelfName" placeholder="e.g., Top Shelf">
-            </div>
+        <div class="modal-row">
+            <label>Shelf Name</label>
+            <input type="text" class="modal-input" id="shelfName" placeholder="e.g., Top Shelf" onkeydown="if (event.key === 'Enter') { createOrUpdateShelf(); }">
+        </div>
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="hideModals()">Cancel</button>
                 <button class="btn-primary" onclick="createOrUpdateShelf()">Save</button>
@@ -280,10 +280,10 @@
     <div class="modal-overlay" id="reservoirModal">
         <div class="modal">
             <h2 id="reservoirModalLabel">Add Reservoir</h2>
-            <div class="modal-row">
-                <label>Reservoir Name</label>
-                <input type="text" class="modal-input" id="reservoirName" placeholder="e.g., Main Reservoir">
-            </div>
+        <div class="modal-row">
+            <label>Reservoir Name</label>
+            <input type="text" class="modal-input" id="reservoirName" placeholder="e.g., Main Reservoir" onkeydown="if (event.key === 'Enter') { createOrUpdateReservoir(); }">
+        </div>
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="hideModals()">Cancel</button>
                 <button class="btn-primary" onclick="createOrUpdateReservoir()">Save</button>
