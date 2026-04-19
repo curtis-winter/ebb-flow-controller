@@ -498,14 +498,22 @@ def get_rack_structure(rack_id):
         'reservoirs': [dict(r) for r in reservoirs],
         'components': []
     }
-    component_rows = conn.execute('''
-        SELECT c.*, d.name as device_name, d.ip_address, d.child_id
-        FROM components c
-        LEFT JOIN devices d ON c.device_id = d.id
-        WHERE c.parent_type = 'rack' AND c.parent_id = ?
-    ''', (rack_id,)).fetchall()
-    for comp in component_rows:
-        result['components'].append(dict(comp))
+    shelf_ids = [s['id'] for s in shelves]
+    reservoir_ids = [r['id'] for r in reservoirs]
+    
+    all_ids = shelf_ids + reservoir_ids
+    if all_ids:
+        placeholders = ','.join('?' * len(all_ids))
+        query = '''
+            SELECT c.*, d.name as device_name, d.ip_address, d.child_id
+            FROM components c
+            LEFT JOIN devices d ON c.device_id = d.id
+            WHERE c.parent_id IN ({})
+        '''.format(placeholders)
+        component_rows = conn.execute(query, tuple(all_ids)).fetchall()
+        for comp in component_rows:
+            result['components'].append(dict(comp))
+    
     conn.close()
     return jsonify(result)
 
