@@ -65,10 +65,10 @@
         .tab-content.active { display: block; }
 
         /* Rack Builder */
-        .rack-builder { display: grid; grid-template-columns: 300px 1fr; gap: 24px; }
+        .rack-builder { display: grid; grid-template-columns: 280px 1fr; gap: 24px; }
         .rack-list { background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 8px; padding: 16px; height: fit-content; }
-        .rack-list-item { padding: 12px; border-radius: 6px; cursor: pointer; margin-bottom: 8px; }
-        .rack-list-item:hover { background: var(--border-card); }
+        .rack-list-item { padding: 12px; border-radius: 6px; cursor: pointer; margin-bottom: 8px; background: var(--border-card); }
+        .rack-list-item:hover { background: var(--accent-teal); }
         .rack-list-item.active { background: var(--accent-teal); }
         .rack-canvas { background: var(--bg-card); border: 2px dashed var(--border-card); border-radius: 8px; min-height: 500px; padding: 20px; position: relative; }
         .rack-canvas.drag-over { border-color: var(--btn-primary); background: rgba(255,200,87,0.1); }
@@ -83,8 +83,9 @@
         .component-chip.light { border-left: 3px solid var(--btn-primary); }
         .component-chip.aerator { border-left: 3px solid var(--accent-green); }
         .component-chip.sensor { border-left: 3px solid var(--accent-gold); }
-        .draggable-device { background: var(--accent-teal); padding: 8px 14px; border-radius: 6px; font-size: 13px; cursor: grab; display: inline-flex; align-items: center; gap: 6px; margin: 4px; }
+        .draggable-device { background: var(--accent-teal); padding: 8px 14px; border-radius: 6px; font-size: 13px; cursor: grab; display: block; margin-bottom: 8px; }
         .draggable-device:active { cursor: grabbing; }
+        .available-devices-list { max-height: 300px; overflow-y: auto; }
         .drop-zone { min-height: 50px; border: 2px dashed var(--border-card); border-radius: 6px; display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; align-items: center; }
         .drop-zone.drag-over { border-color: var(--btn-primary); background: rgba(255,200,87,0.1); }
         .rack-actions { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
@@ -124,14 +125,19 @@
                 <button class="btn-secondary" onclick="showReservoirModal()" id="addReservoirBtn" disabled>+ Add Reservoir</button>
             </div>
             <div class="rack-builder">
-                <div class="rack-list" id="rackList"></div>
+                <div style="grid-column: 1;">
+                    <div style="background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 8px; padding: 16px;">
+                        <h3 style="margin-bottom: 12px;">Racks</h3>
+                        <div id="rackList"></div>
+                    </div>
+                    <div style="background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 8px; padding: 16px; margin-top: 16px;">
+                        <h3 style="margin-bottom: 12px;">Smart Plugs</h3>
+                        <div id="availableDevices"></div>
+                    </div>
+                </div>
                 <div class="rack-canvas" id="rackCanvas">
                     <p style="color: var(--text-secondary); text-align: center; margin-top: 200px;">Select a rack to edit layout</p>
                 </div>
-            </div>
-            <div style="margin-top: 24px;">
-                <h3 style="margin-bottom: 12px;">Available Smart Plugs</h3>
-                <div id="availableDevices"></div>
             </div>
         </div>
         
@@ -289,7 +295,7 @@
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             event.target.classList.add('active');
             document.getElementById('tab-' + tabId).classList.add('active');
-            if (tabId === 'grow-layout') { loadRacks(); loadDevices(); }
+            if (tabId === 'grow-layout') { loadRacks(); loadDevices(); renderAvailableDevices(); }
         }
 
         function showAccountModal() { document.getElementById('accountModal').classList.add('active'); document.getElementById('accountName').focus(); }
