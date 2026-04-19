@@ -13,7 +13,7 @@ docker compose down            # Stop
 - **Port**: 9731
 - **Network**: Uses `network_mode: host` for Kasa device discovery
 - **Data**: `./data/` persists across restarts/rebuilds
-  - `devices.db` - SQLite database  
+  - `devices.db` - SQLite database
   - `encryption.key` - Fernet encryption key
 - **Stack**: Flask + python-kasa (v0.10.2)
 
@@ -28,6 +28,9 @@ docker compose restart
 
 # View logs
 docker logs ebb-flow-controller
+
+# View app logs inside container
+docker exec ebb-flow-controller tail -20 /data/app.log
 ```
 
 ## Adding Kasa Devices
@@ -43,7 +46,48 @@ docker logs ebb-flow-controller
 - Multi-user support with encrypted credentials
 - HS300 (6-plug strips) shown as separate devices
 - Credentials encrypted with Fernet (AES-128)
+- Background scheduler for automated device control
+- Event logging for external state changes
+
+## KLAP V2 Authentication (Required for HS300 v2.0)
+
+The python-kasa library requires specific imports and setup for KLAP V2 authentication:
+
+```python
+# Required imports for KLAP V2
+from kasa.transports.klaptransport import KlapTransportV2
+from kasa.protocols import IotProtocol
+from kasa.iot import IotStrip
+from kasa.deviceconfig import DeviceConfig
+
+# Usage pattern:
+config = DeviceConfig(host=ip_address, credentials=credentials)
+protocol = IotProtocol(transport=KlapTransportV2(config=config))
+plug = IotStrip(host=ip_address, protocol=protocol)
+await plug.update()
+```
+
+### Critical Dependencies
+
+When using KLAP V2, you **must** install `tzdata`:
+
+```dockerfile
+RUN pip install --no-cache-dir -r backend/requirements.txt tzdata
+```
+
+Without `tzdata`, you'll see errors like:
+- `ZoneInfoNotFoundError: 'No time zone found with key MST7MDT'`
+- `Device response did not match our challenge`
+
+### Install PR 1625 for KLAP Fixes
+
+Some KLAP devices require the dev branch fix:
+
+```dockerfile
+RUN pip install --no-cache-dir "git+https://github.com/python-kasa/python-kasa.git@refs/pull/1625/head" --no-deps --force-reinstall
+```
 
 ## Known Issues
 
-- HS300 v2.0 (hardware version 2.0) with KLAP authentication may require python-kasa dev branch for full support
+- HS300 v2.0 (hardware version 2.0) may require python-kasa PR 1625 for full KLAP V2 support
+- Always install `tzdata` to prevent timezone errors
