@@ -336,27 +336,27 @@ async def add_device():
 
     device_payload = [parent_dev] + child_devs
 
-        # Insert each device into the DB
-        conn = get_db()
-        added_ids = []
-        for dev in device_payload:
-            try:
-                conn.execute(
-                    'INSERT INTO devices (account_id, name, ip_address, mac_address, model, child_id) '
-                    'VALUES (?,?,?,?,?,?)',
-                    (account_id, dev['name'], ip, dev['mac_address'], dev['model'], dev.get('child_id'))
-                )
-                conn.commit()
-                new_id = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
-                added_ids.append({'id': new_id, 'name': dev['name'], 'ip_address': ip})
-            except sqlite3.IntegrityError:
-                pass
-        conn.close()
+    # Insert each device into the DB
+    conn = get_db()
+    added_ids = []
+    for dev in device_payload:
+        try:
+            conn.execute(
+                'INSERT INTO devices (account_id, name, ip_address, mac_address, model, child_id) '
+                'VALUES (?,?,?,?,?,?)',
+                (account_id, dev['name'], ip, dev['mac_address'], dev['model'], dev.get('child_id'))
+            )
+            conn.commit()
+            new_id = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
+            added_ids.append({'id': new_id, 'name': dev['name'], 'ip_address': ip})
+        except sqlite3.IntegrityError:
+            pass
+    conn.close()
 
-        if not added_ids:
-            return jsonify({'error': 'Device already exists'}), 400
+    if not added_ids:
+        return jsonify({'error': 'Device already exists'}), 400
 
-        return jsonify(added_ids)
+    return jsonify(added_ids)
 
 @app.route('/api/devices/<int:device_id>', methods=['DELETE'])
 def delete_device(device_id):
