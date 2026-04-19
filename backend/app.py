@@ -90,6 +90,48 @@ def init_db():
         conn.execute('ALTER TABLE devices ADD COLUMN child_id TEXT')
     except:
         pass
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS racks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS shelves (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            rack_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            position INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (rack_id) REFERENCES racks(id) ON DELETE CASCADE
+        )
+    ''')
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS reservoirs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            rack_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            position INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (rack_id) REFERENCES racks(id) ON DELETE CASCADE
+        )
+    ''')
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS components (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            parent_type TEXT NOT NULL,
+            parent_id INTEGER NOT NULL,
+            device_id INTEGER,
+            component_type TEXT NOT NULL,
+            name TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    try:
+        conn.execute('ALTER TABLE components ADD COLUMN device_id INTEGER REFERENCES devices(id)')
+    except:
+        pass
     conn.commit()
     conn.close()
 
@@ -400,6 +442,227 @@ async def get_device_state(device_id):
         return jsonify({'is_on': None, 'error': 'Device unreachable'})
 
     return jsonify({'is_on': state})
+
+@app.route('/api/racks', methods=['GET'])
+def get_racks():
+    conn = get_db()
+    racks = conn.execute('SELECT * FROM racks ORDER BY name').fetchall()
+    result = []
+    for rack in racks:
+        result.append(dict(rack))
+    conn.close()
+    return jsonify(result)
+
+@app.route('/api/racks', methods=['POST'])
+def create_rack():
+    data = request.get_json()
+    name = data.get('name')
+    if not name:
+        return jsonify({'error': 'Name required'}), 400
+    conn = get_db()
+    conn.execute('INSERT INTO racks (name) VALUES (?)', (name,))
+    conn.commit()
+    rack_id = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
+    conn.close()
+    return jsonify({'id': rack_id, 'name': name})
+
+@app.route('/api/racks/<int:rack_id>', methods=['DELETE'])
+def delete_rack(rack_id):
+    conn = get_db()
+    conn.execute('DELETE FROM components WHERE parent_type = "rack" AND parent_id = ?', (rack_id,))
+    conn.execute('DELETE FROM shelves WHERE rack_id = ?', (rack_id,))
+    conn.execute('DELETE FROM reservoirs WHERE rack_id = ?', (rack_id,))
+    conn.execute('DELETE FROM racks WHERE id = ?', (rack_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/api/racks/<int:rack_id>', methods=['PUT'])
+def update_rack(rack_id):
+    data = request.get_json()
+    name = data.get('name')
+    conn = get_db()
+    conn.execute('UPDATE racks SET name = ? WHERE id = ?', (name, rack_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/api/racks/<int:rack_id>/structure', methods=['GET'])
+def get_rack_structure(rack_id):
+    conn = get_db()
+    shelves = conn.execute('SELECT * FROM shelves WHERE rack_id = ? ORDER BY position', (rack_id,)).fetchall()
+    reservoirs = conn.execute('SELECT * FROM reservoirs WHERE rack_id = ? ORDER BY position', (rack_id,)).fetchall()
+    result = {
+        'rack': dict(conn.execute('SELECT * FROM racks WHERE id = ?', (rack_id,)).fetchone()),
+        'shelves': [dict(s) for s in shelves],
+        'reservoirs': [dict(r) for r in reservoirs],
+        'components': []
+    }
+    component_rows = conn.execute('''
+        SELECT c.*, d.name as device_name, d.ip_address, d.child_id
+        FROM components c
+        LEFT JOIN devices d ON c.device_id = d.id
+        WHERE c.parent_type = 'rack' AND c.parent_id = ?
+    ''', (rack_id,)).fetchall()
+    for comp in component_rows:
+        result['components'].append(dict(comp))
+    conn.close()
+    return jsonify(result)
+
+@app.route('/api/racks/<int:rack_id>/shelves', methods=['POST'])
+def add_shelf(rack_id):
+    data = request.get_json()
+    name = data.get('name', 'New Shelf')
+    position = data.get('position', 0)
+    conn = get_db()
+    conn.execute('INSERT INTO shelves (rack_id, name, position) VALUES (?, ?, ?)', (rack_id, name, position))
+    conn.commit()
+    shelf_id = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
+    conn.close()
+    return jsonify({'id': shelf_id, 'rack_id': rack_id, 'name': name, 'position': position})
+
+@app.route('/api/racks/<int:rack_id>/shelves/<int:shelf_id>', methods=['DELETE'])
+def delete_shelf(rack_id, shelf_id):
+    conn = get_db()
+    conn.execute('DELETE FROM components WHERE parent_type = "shelf" AND parent_id = ?', (shelf_id,))
+    conn.execute('DELETE FROM shelves WHERE id = ? AND rack_id = ?', (shelf_id, rack_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/api/racks/<int:rack_id>/shelves/<int:shelf_id>', methods=['PUT'])
+def update_shelf(rack_id, shelf_id):
+    data = request.get_json()
+    name = data.get('name')
+    position = data.get('position')
+    conn = get_db()
+    if name is not None:
+        conn.execute('UPDATE shelves SET name = ? WHERE id = ? AND rack_id = ?', (name, shelf_id, rack_id))
+    if position is not None:
+        conn.execute('UPDATE shelves SET position = ? WHERE id = ? AND rack_id = ?', (position, shelf_id, rack_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/api/racks/<int:rack_id>/reservoirs', methods=['POST'])
+def add_reservoir(rack_id):
+    data = request.get_json()
+    name = data.get('name', 'New Reservoir')
+    position = data.get('position', 0)
+    conn = get_db()
+    conn.execute('INSERT INTO reservoirs (rack_id, name, position) VALUES (?, ?, ?)', (rack_id, name, position))
+    conn.commit()
+    reservoir_id = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
+    conn.close()
+    return jsonify({'id': reservoir_id, 'rack_id': rack_id, 'name': name, 'position': position})
+
+@app.route('/api/racks/<int:rack_id>/reservoirs/<int:reservoir_id>', methods=['DELETE'])
+def delete_reservoir(rack_id, reservoir_id):
+    conn = get_db()
+    conn.execute('DELETE FROM components WHERE parent_type = "reservoir" AND parent_id = ?', (reservoir_id,))
+    conn.execute('DELETE FROM reservoirs WHERE id = ? AND rack_id = ?', (reservoir_id, rack_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/api/racks/<int:rack_id>/reservoirs/<int:reservoir_id>', methods=['PUT'])
+def update_reservoir(rack_id, reservoir_id):
+    data = request.get_json()
+    name = data.get('name')
+    position = data.get('position')
+    conn = get_db()
+    if name is not None:
+        conn.execute('UPDATE reservoirs SET name = ? WHERE id = ? AND rack_id = ?', (name, reservoir_id, rack_id))
+    if position is not None:
+        conn.execute('UPDATE reservoirs SET position = ? WHERE id = ? AND rack_id = ?', (position, reservoir_id, rack_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+COMPONENT_TYPES = ['pump', 'light', 'aerator', 'sensor']
+
+@app.route('/api/components', methods=['GET'])
+def get_components():
+    parent_type = request.args.get('parent_type')
+    parent_id = request.args.get('parent_id', type=int)
+    device_id = request.args.get('device_id', type=int)
+    conn = get_db()
+    query = 'SELECT c.*, d.name as device_name, d.ip_address, d.child_id FROM components c LEFT JOIN devices d ON c.device_id = d.id WHERE 1=1'
+    params = []
+    if parent_type:
+        query += ' AND c.parent_type = ?'
+        params.append(parent_type)
+    if parent_id:
+        query += ' AND c.parent_id = ?'
+        params.append(parent_id)
+    if device_id:
+        query += ' AND c.device_id = ?'
+        params.append(device_id)
+    components = conn.execute(query, params).fetchall()
+    conn.close()
+    return jsonify([dict(c) for c in components])
+
+@app.route('/api/components', methods=['POST'])
+def create_component():
+    data = request.get_json()
+    parent_type = data.get('parent_type')
+    parent_id = data.get('parent_id')
+    device_id = data.get('device_id')
+    component_type = data.get('component_type')
+    name = data.get('name')
+    if not all([parent_type, parent_id, component_type, name]):
+        return jsonify({'error': 'parent_type, parent_id, component_type, and name required'}), 400
+    if component_type not in COMPONENT_TYPES:
+        return jsonify({'error': f'component_type must be one of: {COMPONENT_TYPES}'}), 400
+    conn = get_db()
+    conn.execute(
+        'INSERT INTO components (parent_type, parent_id, device_id, component_type, name) VALUES (?, ?, ?, ?, ?)',
+        (parent_type, parent_id, device_id, component_type, name)
+    )
+    conn.commit()
+    component_id = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
+    conn.close()
+    return jsonify({'id': component_id, 'parent_type': parent_type, 'parent_id': parent_id, 'device_id': device_id, 'component_type': component_type, 'name': name})
+
+@app.route('/api/components/<int:component_id>', methods=['DELETE'])
+def delete_component(component_id):
+    conn = get_db()
+    conn.execute('DELETE FROM components WHERE id = ?', (component_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/api/components/<int:component_id>', methods=['PUT'])
+def update_component(component_id):
+    data = request.get_json()
+    name = data.get('name')
+    device_id = data.get('device_id')
+    conn = get_db()
+    if name is not None:
+        conn.execute('UPDATE components SET name = ? WHERE id = ?', (name, component_id))
+    if device_id is not None:
+        conn.execute('UPDATE components SET device_id = ? WHERE id = ?', (device_id, component_id))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/api/sensors', methods=['GET'])
+def get_sensors():
+    parent_type = request.args.get('parent_type')
+    parent_id = request.args.get('parent_id', type=int)
+    conn = get_db()
+    sensors = conn.execute('''
+        SELECT c.*, d.name as device_name, d.ip_address
+        FROM components c
+        JOIN devices d ON c.device_id = d.id
+        WHERE c.component_type = 'sensor'
+    ''', (parent_type, parent_id) if parent_type and parent_id else []).fetchall()
+    conn.close()
+    return jsonify([dict(s) for s in sensors])
+
+@app.route('/api/sensors/<int:sensor_id>/read', methods=['GET'])
+def read_sensor(sensor_id):
+    return jsonify({'sensor_id': sensor_id, 'value': None, 'error': 'Sensor integration not yet implemented'})
 
 if __name__ == '__main__':
     os.makedirs('/data', exist_ok=True)

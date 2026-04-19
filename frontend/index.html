@@ -56,15 +56,40 @@
         .modal-actions { display: flex; gap: 12px; justify-content: flex-end; }
         
         /* Tabs */
-        .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 24px; }
+        .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border-card); margin-bottom: 24px; }
         .tab { padding: 12px 24px; cursor: pointer; border: none; background: none; color: var(--text-secondary); font-size: 15px; font-weight: 500; position: relative; }
         .tab:hover { color: var(--text-primary); }
-        .tab.active { color: var(--primary); }
-        .tab.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px; background: var(--primary); }
+        .tab.active { color: var(--btn-primary); }
+        .tab.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px; background: var(--btn-primary); }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
-        
-        @media (max-width: 640px) { .devices-grid { grid-template-columns: 1fr; } header { flex-direction: column; align-items: flex-start; } .header-actions { width: 100%; flex-wrap: wrap; } }
+
+        /* Rack Builder */
+        .rack-builder { display: grid; grid-template-columns: 300px 1fr; gap: 24px; }
+        .rack-list { background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 8px; padding: 16px; height: fit-content; }
+        .rack-list-item { padding: 12px; border-radius: 6px; cursor: pointer; margin-bottom: 8px; }
+        .rack-list-item:hover { background: var(--border-card); }
+        .rack-list-item.active { background: var(--accent-teal); }
+        .rack-canvas { background: var(--bg-card); border: 2px dashed var(--border-card); border-radius: 8px; min-height: 500px; padding: 20px; position: relative; }
+        .rack-canvas.drag-over { border-color: var(--btn-primary); background: rgba(255,200,87,0.1); }
+        .shelf-item, .reservoir-item { border: 2px solid var(--border-card); border-radius: 8px; padding: 16px; margin-bottom: 12px; background: var(--bg-primary); }
+        .shelf-item { border-color: var(--accent-teal); }
+        .reservoir-item { border-color: var(--accent-green); display: flex; gap: 12px; }
+        .component-slot { min-height: 60px; border: 1px dashed var(--border-card); border-radius: 6px; padding: 8px; margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+        .component-slot.drag-over { border-color: var(--btn-primary); background: rgba(255,200,87,0.1); }
+        .component-chip { background: var(--border-card); padding: 6px 12px; border-radius: 20px; font-size: 13px; cursor: grab; display: flex; align-items: center; gap: 8px; }
+        .component-chip:active { cursor: grabbing; }
+        .component-chip.pump { border-left: 3px solid var(--accent-teal); }
+        .component-chip.light { border-left: 3px solid var(--btn-primary); }
+        .component-chip.aerator { border-left: 3px solid var(--accent-green); }
+        .component-chip.sensor { border-left: 3px solid var(--accent-gold); }
+        .draggable-device { background: var(--accent-teal); padding: 8px 14px; border-radius: 6px; font-size: 13px; cursor: grab; display: inline-flex; align-items: center; gap: 6px; margin: 4px; }
+        .draggable-device:active { cursor: grabbing; }
+        .drop-zone { min-height: 50px; border: 2px dashed var(--border-card); border-radius: 6px; display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; align-items: center; }
+        .drop-zone.drag-over { border-color: var(--btn-primary); background: rgba(255,200,87,0.1); }
+        .rack-actions { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+
+        @media (max-width: 640px) { .devices-grid { grid-template-columns: 1fr; } header { flex-direction: column; align-items: flex-start; } .header-actions { width: 100%; flex-wrap: wrap; } .rack-builder { grid-template-columns: 1fr; } }
     </style>
 </head>
 <body>
@@ -93,7 +118,21 @@
         </div>
         
         <div id="tab-grow-layout" class="tab-content">
-            <p style="color: var(--text-secondary);">Grow layout configuration coming soon...</p>
+            <div class="rack-actions">
+                <button class="btn-primary" onclick="showRackModal()">+ New Rack</button>
+                <button class="btn-secondary" onclick="showShelfModal()" id="addShelfBtn" disabled>+ Add Shelf</button>
+                <button class="btn-secondary" onclick="showReservoirModal()" id="addReservoirBtn" disabled>+ Add Reservoir</button>
+            </div>
+            <div class="rack-builder">
+                <div class="rack-list" id="rackList"></div>
+                <div class="rack-canvas" id="rackCanvas">
+                    <p style="color: var(--text-secondary); text-align: center; margin-top: 200px;">Select a rack to edit layout</p>
+                </div>
+            </div>
+            <div style="margin-top: 24px;">
+                <h3 style="margin-bottom: 12px;">Available Smart Plugs</h3>
+                <div id="availableDevices"></div>
+            </div>
         </div>
         
         <div id="tab-grow-schedule" class="tab-content">
@@ -168,19 +207,383 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="rackModal">
+        <div class="modal">
+            <h2>New Grow Rack</h2>
+            <div class="modal-row">
+                <label>Rack Name</label>
+                <input type="text" class="modal-input" id="rackName" placeholder="e.g., Main Rack">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="hideModals()">Cancel</button>
+                <button class="btn-primary" onclick="createRack()">Create</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="shelfModal">
+        <div class="modal">
+            <h2>Add Shelf</h2>
+            <div class="modal-row">
+                <label>Shelf Name</label>
+                <input type="text" class="modal-input" id="shelfName" placeholder="e.g., Top Shelf">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="hideModals()">Cancel</button>
+                <button class="btn-primary" onclick="createShelf()">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="reservoirModal">
+        <div class="modal">
+            <h2>Add Reservoir</h2>
+            <div class="modal-row">
+                <label>Reservoir Name</label>
+                <input type="text" class="modal-input" id="reservoirName" placeholder="e.g., Main Reservoir">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="hideModals()">Cancel</button>
+                <button class="btn-primary" onclick="createReservoir()">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="componentModal">
+        <div class="modal">
+            <h2>Add Component</h2>
+            <div class="modal-row">
+                <label>Component Type</label>
+                <select class="modal-select" id="componentType">
+                    <option value="pump">Pump</option>
+                    <option value="light">Light</option>
+                    <option value="aerator">Aerator</option>
+                    <option value="sensor">Sensor</option>
+                </select>
+            </div>
+            <div class="modal-row">
+                <label>Component Name</label>
+                <input type="text" class="modal-input" id="componentName" placeholder="e.g., Circulation Pump">
+            </div>
+            <div class="modal-row">
+                <label>Smart Plug (optional)</label>
+                <select class="modal-select" id="componentDevice">
+                    <option value="">-- None --</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="hideModals()">Cancel</button>
+                <button class="btn-primary" onclick="createComponent()">Add</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let devices = [];
+        let racks = [];
+        let currentRackId = null;
+        let currentRackStructure = null;
 
         function showTab(tabId) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             event.target.classList.add('active');
             document.getElementById('tab-' + tabId).classList.add('active');
+            if (tabId === 'grow-layout') { loadRacks(); loadDevices(); }
         }
 
         function showAccountModal() { document.getElementById('accountModal').classList.add('active'); document.getElementById('accountName').focus(); }
         function showAddModal() { document.getElementById('addModal').classList.add('active'); document.getElementById('deviceIp').focus(); }
         function showDiscoverModal() { document.getElementById('discoverModal').classList.add('active'); runDiscovery(); }
+        function showRackModal() { document.getElementById('rackModal').classList.add('active'); document.getElementById('rackName').focus(); }
+        function showShelfModal() { document.getElementById('shelfModal').classList.add('active'); document.getElementById('shelfName').focus(); }
+        function showReservoirModal() { document.getElementById('reservoirModal').classList.add('active'); document.getElementById('reservoirName').focus(); }
+        function showComponentModal(ptype, pid) { 
+            currentComponentParent = { type: ptype, id: pid };
+            document.getElementById('componentModal').classList.add('active');
+            document.getElementById('componentName').focus();
+            populateDeviceSelect();
+        }
+
+        let currentComponentParent = null;
+
+        async function populateDeviceSelect() {
+            const select = document.getElementById('componentDevice');
+            const res = await fetch('/api/devices');
+            const devs = await res.json();
+            select.innerHTML = '<option value="">-- None --</option>';
+            devs.forEach(d => {
+                select.innerHTML += `<option value="${d.id}">${d.name}</option>`;
+            });
+        }
+
+        async function createComponent() {
+            const component_type = document.getElementById('componentType').value;
+            const name = document.getElementById('componentName').value.trim();
+            const device_id = document.getElementById('componentDevice').value || null;
+            if (!name) { alert('Name required'); return; }
+
+            await fetch('/api/components', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    parent_type: currentComponentParent.type,
+                    parent_id: currentComponentParent.id,
+                    component_type,
+                    name,
+                    device_id: device_id ? parseInt(device_id) : null
+                })
+            });
+            hideModals();
+            document.getElementById('componentName').value = '';
+            loadRackStructure(currentRackId);
+        }
+
+        async function createRack() {
+            const name = document.getElementById('rackName').value.trim();
+            if (!name) { alert('Name required'); return; }
+            await fetch('/api/racks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            hideModals();
+            document.getElementById('rackName').value = '';
+            loadRacks();
+        }
+
+        async function createShelf() {
+            const name = document.getElementById('shelfName').value.trim() || 'New Shelf';
+            await fetch('/api/racks/' + currentRackId + '/shelves', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, position: currentRackStructure.shelves.length })
+            });
+            hideModals();
+            document.getElementById('shelfName').value = '';
+            loadRackStructure(currentRackId);
+        }
+
+        async function createReservoir() {
+            const name = document.getElementById('reservoirName').value.trim() || 'New Reservoir';
+            await fetch('/api/racks/' + currentRackId + '/reservoirs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, position: currentRackStructure.reservoirs.length })
+            });
+            hideModals();
+            document.getElementById('reservoirName').value = '';
+            loadRackStructure(currentRackId);
+        }
+
+        async function loadRacks() {
+            const res = await fetch('/api/racks');
+            racks = await res.json();
+            renderRackList();
+        }
+
+        function renderRackList() {
+            const list = document.getElementById('rackList');
+            if (racks.length === 0) {
+                list.innerHTML = '<p style="color: var(--text-secondary);">No racks yet. Create one to start.</p>';
+                return;
+            }
+            list.innerHTML = racks.map(r => `
+                <div class="rack-list-item ${r.id === currentRackId ? 'active' : ''}" onclick="selectRack(${r.id})">
+                    <strong>${r.name}</strong>
+                </div>
+            `).join('');
+        }
+
+        async function selectRack(rackId) {
+            currentRackId = rackId;
+            document.getElementById('addShelfBtn').disabled = false;
+            document.getElementById('addReservoirBtn').disabled = false;
+            renderRackList();
+            await loadRackStructure(rackId);
+        }
+
+        async function loadRackStructure(rackId) {
+            const res = await fetch('/api/racks/' + rackId + '/structure');
+            currentRackStructure = await res.json();
+            renderRackCanvas();
+        }
+
+        function renderRackCanvas() {
+            const canvas = document.getElementById('rackCanvas');
+            if (!currentRackStructure) {
+                canvas.innerHTML = '<p style="color: var(--text-secondary); text-align: center; margin-top: 200px;">Select a rack to edit layout</p>';
+                return;
+            }
+
+            let html = `<h2>${currentRackStructure.rack.name}</h2>`;
+
+            if (currentRackStructure.reservoirs.length > 0) {
+                html += '<h3 style="color: var(--accent-green); margin: 16px 0 8px;">Reservoirs</h3>';
+                currentRackStructure.reservoirs.forEach(res => {
+                    const comps = currentRackStructure.components.filter(c => c.parent_type === 'reservoir' && c.parent_id === res.id);
+                    html += renderReservoir(res, comps);
+                });
+            }
+
+            if (currentRackStructure.shelves.length > 0) {
+                html += '<h3 style="color: var(--accent-teal); margin: 16px 0 8px;">Shelves</h3>';
+                currentRackStructure.shelves.sort((a,b) => a.position - b.position).forEach(shelf => {
+                    const comps = currentRackStructure.components.filter(c => c.parent_type === 'shelf' && c.parent_id === shelf.id);
+                    html += renderShelf(shelf, comps);
+                });
+            } else {
+                html += '<p style="color: var(--text-secondary); margin-top: 20px;">Add shelves to this rack</p>';
+            }
+
+            canvas.innerHTML = html;
+        }
+
+        function renderReservoir(res, comps) {
+            const aerators = comps.filter(c => c.component_type === 'aerator');
+            return `
+                <div class="reservoir-item" data-id="${res.id}" data-type="reservoir">
+                    <div style="flex: 1;">
+                        <strong>${res.name}</strong>
+                        <div style="margin-top: 8px;">
+                            <strong style="color: var(--accent-green);">Aerators:</strong>
+                            <div class="component-slot" data-parent="reservoir" data-id="${res.id}" data-type="aerator">
+                                ${aerators.length === 0 ? '<span style="color: var(--text-secondary); font-size: 12px;">Drag aerator here</span>' : ''}
+                                ${aerators.map(c => renderComponentChip(c)).join('')}
+                            </div>
+                            <button class="btn-secondary" style="margin-top: 8px; font-size: 12px; padding: 6px 12px;" onclick="showComponentModal('reservoir', ${res.id})">+ Add Aerator</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderShelf(shelf, comps) {
+            const pumps = comps.filter(c => c.component_type === 'pump');
+            const lights = comps.filter(c => c.component_type === 'light');
+            const sensors = comps.filter(c => c.component_type === 'sensor');
+            return `
+                <div class="shelf-item" data-id="${shelf.id}" data-type="shelf">
+                    <strong>${shelf.name}</strong>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 12px;">
+                        <div>
+                            <strong style="color: var(--accent-teal);">Pumps:</strong>
+                            <div class="component-slot" data-parent="shelf" data-id="${shelf.id}" data-type="pump">
+                                ${pumps.length === 0 ? '<span style="color: var(--text-secondary); font-size: 12px;">Drag pump</span>' : ''}
+                                ${pumps.map(c => renderComponentChip(c)).join('')}
+                            </div>
+                            <button class="btn-secondary" style="margin-top: 8px; font-size: 12px; padding: 6px 12px;" onclick="showComponentModal('shelf', ${shelf.id})">+ Add Pump</button>
+                        </div>
+                        <div>
+                            <strong style="color: var(--btn-primary);">Lights:</strong>
+                            <div class="component-slot" data-parent="shelf" data-id="${shelf.id}" data-type="light">
+                                ${lights.length === 0 ? '<span style="color: var(--text-secondary); font-size: 12px;">Drag light</span>' : ''}
+                                ${lights.map(c => renderComponentChip(c)).join('')}
+                            </div>
+                        </div>
+                        <div>
+                            <strong style="color: var(--accent-gold);">Sensors:</strong>
+                            <div class="component-slot" data-parent="shelf" data-id="${shelf.id}" data-type="sensor">
+                                ${sensors.length === 0 ? '<span style="color: var(--text-secondary); font-size: 12px;">Add sensor</span>' : ''}
+                                ${sensors.map(c => renderComponentChip(c)).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderComponentChip(c) {
+            return `
+                <div class="component-chip ${c.component_type}" data-id="${c.id}" draggable="true">
+                    <span>${c.name}</span>
+                    <span style="opacity: 0.6; cursor: pointer;" onclick="removeComponent(${c.id})">✕</span>
+                </div>
+            `;
+        }
+
+        async function removeComponent(id) {
+            if (!confirm('Remove this component?')) return;
+            await fetch('/api/components/' + id, { method: 'DELETE' });
+            loadRackStructure(currentRackId);
+        }
+
+        async function deleteCurrentRack() {
+            if (!confirm('Delete this rack and all its contents?')) return;
+            await fetch('/api/racks/' + currentRackId, { method: 'DELETE' });
+            currentRackId = null;
+            currentRackStructure = null;
+            document.getElementById('addShelfBtn').disabled = true;
+            document.getElementById('addReservoirBtn').disabled = true;
+            loadRacks();
+        }
+
+        function renderAvailableDevices() {
+            const div = document.getElementById('availableDevices');
+            if (devices.length === 0) {
+                div.innerHTML = '<p style="color: var(--text-secondary);">No smart plugs added. Add them in Smart Device tab first.</p>';
+                return;
+            }
+            div.innerHTML = devices.map(d => `
+                <div class="draggable-device" draggable="true" data-device-id="${d.id}" data-device-name="${d.name.replace(/"/g, '&quot;')}">
+                    🔌 ${d.name}
+                </div>
+            `).join('');
+
+            div.querySelectorAll('.draggable-device').forEach(el => {
+                el.addEventListener('dragstart', e => {
+                    e.dataTransfer.setData('deviceId', el.dataset.deviceId);
+                    e.dataTransfer.setData('deviceName', el.dataset.deviceName);
+                });
+            });
+        }
+
+        document.addEventListener('dragover', e => {
+            if (e.target.classList.contains('component-slot')) {
+                e.preventDefault();
+                e.target.classList.add('drag-over');
+            }
+        });
+
+        document.addEventListener('dragleave', e => {
+            if (e.target.classList.contains('component-slot')) {
+                e.target.classList.remove('drag-over');
+            }
+        });
+
+        document.addEventListener('drop', async e => {
+            const slot = e.target.closest('.component-slot');
+            if (!slot) return;
+            slot.classList.remove('drag-over');
+
+            const deviceId = e.dataTransfer.getData('deviceId');
+            const deviceName = e.dataTransfer.getData('deviceName');
+            if (!deviceId) return;
+
+            const parentType = slot.dataset.parent;
+            const parentId = parseInt(slot.dataset.id);
+            const componentType = slot.dataset.type;
+
+            const existingRes = await fetch('/api/components?parent_type=' + parentType + '&parent_id=' + parentId + '&device_id=' + deviceId);
+            const existing = await existingRes.json();
+            if (existing.length > 0) {
+                alert('This plug is already assigned to this component');
+                return;
+            }
+
+            await fetch('/api/components', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    parent_type: parentType,
+                    parent_id: parentId,
+                    component_type: componentType,
+                    name: deviceName,
+                    device_id: parseInt(deviceId)
+                })
+            });
+            loadRackStructure(currentRackId);
+        });
         let editingDeviceId = null;
         function showEditModal(id, name) { 
             editingDeviceId = id; 
