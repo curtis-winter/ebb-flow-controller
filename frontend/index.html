@@ -119,6 +119,7 @@
                 <button class="btn-secondary" onclick="showAccountModal()">+ Account</button>
                 <button class="btn-secondary" onclick="showDiscoverModal()">Scan</button>
                 <button class="btn-secondary" onclick="showAddModal()">Add Device</button>
+                <button class="btn-secondary" onclick="refreshAllDevices()" title="Refresh all device status">↻</button>
             </div>
             <div class="devices-grid" id="devicesGrid"></div>
         </div>
@@ -128,6 +129,7 @@
                 <button class="btn-primary" onclick="showRackModal()">+ New Rack</button>
                 <button class="btn-secondary" onclick="showShelfModal()" id="addShelfBtn" disabled>+ Add Shelf</button>
                 <button class="btn-secondary" onclick="showReservoirModal()" id="addReservoirBtn" disabled>+ Add Reservoir</button>
+                <button class="btn-secondary btn-delete" onclick="deleteCurrentRack()" id="deleteRackBtn" disabled>Delete Rack</button>
             </div>
             <div class="rack-builder">
                 <div style="grid-column: 1;">
@@ -433,6 +435,7 @@
             currentRackId = rackId;
             document.getElementById('addShelfBtn').disabled = false;
             document.getElementById('addReservoirBtn').disabled = false;
+            document.getElementById('deleteRackBtn').disabled = false;
             renderRackList();
             await loadRackStructure(rackId);
         }
@@ -528,9 +531,11 @@
         }
 
         function renderComponentChip(c) {
+            const device = devices.find(d => d.id === c.device_id);
+            const status = device ? (device.is_on ? '💡' : '⭕') : '⚪';
             return `
                 <div class="component-chip ${c.component_type}" data-id="${c.id}" draggable="true">
-                    <span>${c.name}</span>
+                    <span>${status} ${c.name}</span>
                     <span style="opacity: 0.6; cursor: pointer;" onclick="removeComponent(${c.id})">✕</span>
                 </div>
             `;
@@ -560,9 +565,24 @@
                 div.innerHTML = '<p style="color: var(--text-secondary);">No smart plugs added. Add them in Smart Device tab first.</p>';
                 return;
             }
-            div.innerHTML = devices.map(d => `
+
+            const usedDeviceIds = new Set();
+            if (currentRackStructure) {
+                currentRackStructure.components.forEach(c => {
+                    if (c.device_id) usedDeviceIds.add(c.device_id);
+                });
+            }
+
+            const available = devices.filter(d => !usedDeviceIds.has(d.id));
+            if (available.length === 0) {
+                div.innerHTML = '<p style="color: var(--text-secondary);">All smart plugs assigned to this rack</p>';
+                return;
+            }
+
+            div.innerHTML = available.map(d => `
                 <div class="draggable-device" draggable="true" data-device-id="${d.id}" data-device-name="${d.name.replace(/"/g, '&quot;')}">
-                    🔌 ${d.name}
+                    <span class="device-status ${d.is_on ? 'on' : 'off'}">${d.is_on ? '💡' : '⭕'}</span>
+                    ${d.name}
                 </div>
             `).join('');
 
@@ -797,12 +817,20 @@ const res = await fetch('/api/devices', {
             if (data.error) { showAlert(data.error); loadDevices(); }
             else { btn.className = 'btn-toggle ' + (data.is_on ? 'on' : ''); btn.textContent = data.is_on ? 'Turn Off' : 'Turn On'; status.className = 'device-status ' + (data.is_on ? 'on' : 'off'); status.textContent = data.is_on ? 'ON' : 'OFF'; }
             btn.disabled = false;
+            renderAvailableDevices();
         }
 
         async function deleteDevice(id) {
             if (!(await showConfirm('Remove this device?'))) return;
             await fetch('/api/devices/' + id, { method: 'DELETE' });
             loadDevices();
+        }
+
+        async function refreshAllDevices() {
+            const btns = document.querySelectorAll('.btn-toggle');
+            btns.forEach(btn => { btn.disabled = true; btn.textContent = '...'; });
+            await loadDevices();
+            showAlert('Device status refreshed', false);
         }
 
         async function addDevice() {

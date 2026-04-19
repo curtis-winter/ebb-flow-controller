@@ -7,10 +7,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY backend/requirements.txt ./backend/
+RUN pip install --no-cache-dir -r backend/requirements.txt tzdata
 
-RUN pip install --no-cache-dir "git+https://github.com/python-kasa/python-kasa.git@refs/pull/1625/head" --no-deps || true
+RUN pip install --no-cache-dir "git+https://github.com/python-kasa/python-kasa.git@refs/pull/1625/head" --no-deps --force-reinstall
 
 COPY backend/ ./backend/
 COPY frontend/ ./frontend/
