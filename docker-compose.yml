@@ -1,0 +1,10 @@
+services:
+  app:
+    build: .
+    container_name: ebb-flow-controller
+    ports:
+      - "9731:9731"
+    volumes:
+      - ./data:/data
+    network_mode: host
+    restart: unless-stopped

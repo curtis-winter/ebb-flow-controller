@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EBB Flow Controller</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg-primary: #1e1e1e; --bg-card: #2a2a2a; --border-card: #3a3a3a; --accent-green: #177e89; --accent-red: #db3a34; --accent-teal: #084c61; --accent-gold: #ffc857; --text-primary: #f5f5f5; --text-secondary: #a0a0a0; --btn-primary: #ffc857; --btn-hover: #e6b84d; --btn-text: #1e1e1e; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Outfit', sans-serif; background-color: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
+        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+        h1 { font-size: 24px; font-weight: 600; }
+        .header-actions { display: flex; gap: 12px; align-items: center; }
+        .account-select { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-card); padding: 10px 12px; border-radius: 6px; font-family: inherit; font-size: 14px; min-width: 150px; }
+        button { font-family: inherit; padding: 10px 20px; border: none; border-radius: 6px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background-color 0.2s; }
+        button:active { transform: scale(0.98); }
+        .btn-primary { background-color: var(--btn-primary); color: white; }
+        .btn-primary:hover { background-color: var(--btn-hover); }
+        .btn-secondary { background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-card); }
+        .btn-secondary:hover { background-color: var(--border-card); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .devices-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .device-card { background-color: var(--bg-card); border: 1px solid var(--border-card); border-radius: 8px; padding: 20px; transition: transform 0.2s; }
+        .device-card:hover { transform: scale(1.02); }
+        .device-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+        .device-icon { font-size: 32px; }
+        .device-status { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; text-transform: uppercase; }
+        .device-status.on { background-color: rgba(23, 126, 137, 0.2); color: var(--accent-teal); }
+        .device-status.off { background-color: rgba(219, 58, 52, 0.2); color: var(--accent-red); }
+        .device-status.loading { background-color: rgba(255, 200, 87, 0.2); color: var(--btn-primary); }
+        .device-name { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+        .device-info { color: var(--text-secondary); font-size: 14px; margin-bottom: 12px; }
+        .device-actions { display: flex; gap: 10px; }
+        .device-actions button { flex: 1; }
+        .btn-toggle { background-color: var(--accent-teal); color: white; }
+        .btn-toggle:hover { background-color: var(--accent-green); }
+        .btn-toggle.on { background-color: var(--accent-red); }
+        .btn-toggle.on:hover { background-color: #c02e2a; }
+        .btn-delete { background: transparent; color: var(--accent-red); padding: 10px; font-size: 18px; }
+        .btn-delete:hover { background: rgba(219,58,52,0.1); }
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
+        .empty-state h2 { margin-bottom: 8px; color: var(--text-primary); }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.7); display: flex; justify-content: center; align-items: center; z-index: 9999; opacity: 0; visibility: hidden; }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal { background-color: var(--bg-card); border: 1px solid var(--border-card); border-radius: 8px; padding: 24px; width: 90%; max-width: 400px; }
+        .modal h2 { font-size: 18px; margin-bottom: 16px; }
+        .modal-input { width: 100%; padding: 12px; border: 1px solid var(--border-card); border-radius: 6px; background-color: var(--bg-primary); color: var(--text-primary); font-family: inherit; font-size: 14px; margin-bottom: 12px; }
+        .modal-input:focus { outline: none; border-color: var(--btn-primary); }
+        .modal-select { width: 100%; padding: 12px; border: 1px solid var(--border-card); border-radius: 6px; background-color: var(--bg-primary); color: var(--text-primary); font-family: inherit; font-size: 14px; margin-bottom: 12px; }
+        .modal-row { margin-bottom: 12px; }
+        .modal-row label { display: block; margin-bottom: 6px; color: var(--text-secondary); font-size: 14px; }
+        .modal-actions { display: flex; gap: 12px; justify-content: flex-end; }
+        @media (max-width: 640px) { .devices-grid { grid-template-columns: 1fr; } header { flex-direction: column; align-items: flex-start; } .header-actions { width: 100%; flex-wrap: wrap; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>EBB Flow Controller</h1>
+            <div class="header-actions">
+                <select class="account-select" id="accountSelect" onchange="loadDevices()">
+                    <option value="">Select Account</option>
+                </select>
+                <button class="btn-secondary btn-delete" id="deleteAccountBtn" onclick="deleteAccount()" title="Delete Account" style="display: none;">✕</button>
+                <button class="btn-secondary" onclick="showAccountModal()">+ Account</button>
+                <button class="btn-secondary" onclick="showDiscoverModal()">Scan</button>
+                <button class="btn-secondary" onclick="showAddModal()">Add Device</button>
+            </div>
+        </header>
+        <div class="devices-grid" id="devicesGrid"></div>
+    </div>
+
+    <div class="modal-overlay" id="accountModal">
+        <div class="modal">
+            <h2>Add Account</h2>
+            <div class="modal-row">
+                <label>Account Name</label>
+                <input type="text" class="modal-input" id="accountName" placeholder="e.g., Home">
+            </div>
+            <div class="modal-row">
+                <label>Provider</label>
+                <select class="modal-select" id="accountProvider">
+                    <option value="kasa">Kasa</option>
+                    <option value="tapo">Tapo</option>
+                </select>
+            </div>
+            <div class="modal-row">
+                <label>Email</label>
+                <input type="email" class="modal-input" id="accountEmail" placeholder="your@email.com">
+            </div>
+            <div class="modal-row">
+                <label>Password</label>
+                <input type="password" class="modal-input" id="accountPassword" placeholder="Your account password">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="hideModals()">Cancel</button>
+                <button class="btn-primary" onclick="createAccount()">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="discoverModal">
+        <div class="modal">
+            <h2>Scan Network</h2>
+            <div id="discoverContent" style="min-height: 100px;">
+                <p style="color: var(--text-secondary);">Scanning for devices...</p>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="hideModals()">Cancel</button>
+                <button class="btn-primary" id="discoverAddBtn" onclick="addDiscoveredDevices()" style="display: none;">Add Selected</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="addModal">
+        <div class="modal">
+            <h2>Add Device</h2>
+            <input type="text" class="modal-input" id="deviceIp" placeholder="IP address (e.g., 192.168.1.100)">
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="hideModals()">Cancel</button>
+                <button class="btn-primary" onclick="addDevice()">Add</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="editModal">
+        <div class="modal">
+            <h2>Edit Device</h2>
+            <div class="modal-row">
+                <label>Device Name</label>
+                <input type="text" class="modal-input" id="deviceName" placeholder="Device name">
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="hideModals()">Cancel</button>
+                <button class="btn-primary" onclick="saveDeviceName()">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let devices = [];
+
+        function showAccountModal() { document.getElementById('accountModal').classList.add('active'); document.getElementById('accountName').focus(); }
+        function showAddModal() { document.getElementById('addModal').classList.add('active'); document.getElementById('deviceIp').focus(); }
+        function showDiscoverModal() { document.getElementById('discoverModal').classList.add('active'); runDiscovery(); }
+        let editingDeviceId = null;
+        function showEditModal(id, name) { 
+            editingDeviceId = id; 
+            document.getElementById('deviceName').value = name;
+            document.getElementById('editModal').classList.add('active'); 
+            document.getElementById('deviceName').focus(); 
+        }
+        async function saveDeviceName() {
+            const name = document.getElementById('deviceName').value.trim();
+            if (!name || !editingDeviceId) return;
+            
+            await fetch('/api/devices/' + editingDeviceId, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            hideModals();
+            editingDeviceId = null;
+            loadDevices();
+        }
+        function hideModals() { document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active')); }
+
+        let discoveredDevices = {};
+
+        async function runDiscovery() {
+            const content = document.getElementById('discoverContent');
+            document.getElementById('discoverAddBtn').style.display = 'none';
+            content.innerHTML = '<p style="color: var(--text-secondary);">Scanning for devices...</p>';
+
+            const accountId = document.getElementById('accountSelect').value || null;
+            const res = await fetch('/api/devices/discover', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ account_id: accountId })
+            });
+            discoveredDevices = await res.json();
+
+            const ips = Object.keys(discoveredDevices);
+            if (ips.length === 0) {
+                content.innerHTML = '<p style="color: var(--text-secondary);">No devices found. Make sure devices are on the same network.</p>';
+                return;
+            }
+
+            content.innerHTML = ips.map(ip => `
+                <label style="display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--border-card); border-radius: 6px; margin-bottom: 8px; cursor: pointer;">
+                    <input type="checkbox" value="${ip}" style="width: 18px; height: 18px;">
+                    <div>
+                        <div style="font-weight: 600;">${discoveredDevices[ip].model || 'Smart Outlet'}</div>
+                        <div style="color: var(--text-secondary); font-size: 12px;">${ip}</div>
+                    </div>
+                </label>
+            `).join('');
+            document.getElementById('discoverAddBtn').style.display = 'inline-block';
+        }
+
+        async function addDiscoveredDevices() {
+            const checkboxes = document.querySelectorAll('#discoverContent input[type="checkbox"]:checked');
+            const ips = Array.from(checkboxes).map(c => c.value);
+            const accountId = document.getElementById('accountSelect').value || null;
+
+            for (const ip of ips) {
+const res = await fetch('/api/devices', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ ip_address: ip, account_id: accountId })
+                });
+            }
+            hideModals();
+            loadDevices();
+        }
+
+        document.querySelectorAll('.modal-overlay').forEach(m => m.addEventListener('click', e => { if (e.target === m) hideModals(); }));
+        document.getElementById('deviceIp').addEventListener('keydown', e => { if (e.key === 'Enter') addDevice(); });
+
+        async function loadAccounts() {
+            const res = await fetch('/api/accounts');
+            const accounts = await res.json();
+            const select = document.getElementById('accountSelect');
+            const deleteBtn = document.getElementById('deleteAccountBtn');
+            select.innerHTML = '<option value="">Select Account</option>';
+            accounts.forEach(a => {
+                select.innerHTML += `<option value="${a.id}">${a.name} (${a.provider})</option>`;
+            });
+            select.onchange = function() {
+                deleteBtn.style.display = this.value ? 'inline-block' : 'none';
+                loadDevices();
+            };
+        }
+
+        async function deleteAccount() {
+            const accountId = document.getElementById('accountSelect').value;
+            if (!accountId) return;
+            if (!confirm('Delete this account and all its devices?')) return;
+            
+            const res = await fetch('/api/accounts/' + accountId, { method: 'DELETE' });
+            if (res.ok) {
+                document.getElementById('deleteAccountBtn').style.display = 'none';
+                await loadAccounts();
+                await loadDevices();
+            }
+        }
+
+        async function createAccount() {
+            const name = document.getElementById('accountName').value.trim();
+            const provider = document.getElementById('accountProvider').value;
+            const username = document.getElementById('accountEmail').value.trim();
+            const password = document.getElementById('accountPassword').value;
+
+            if (!name || !username || !password) { alert('Please fill all fields'); return; }
+
+            try {
+                const res = await fetch('/api/accounts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, provider, username, password })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    hideModals();
+                    document.getElementById('accountName').value = '';
+                    document.getElementById('accountEmail').value = '';
+                    document.getElementById('accountPassword').value = '';
+                    await loadAccounts();
+                    document.getElementById('accountSelect').value = data.id;
+                    await loadDevices();
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Failed to create account');
+                }
+            } catch (e) {
+                alert('Error: ' + e.message);
+            }
+        }
+
+        async function loadDevices() {
+            const accountId = document.getElementById('accountSelect').value;
+            const url = accountId ? `/api/devices?account_id=${accountId}` : '/api/devices';
+            const res = await fetch(url);
+            devices = await res.json();
+            renderDevices();
+        }
+
+        function renderDevices() {
+            const grid = document.getElementById('devicesGrid');
+            if (devices.length === 0) {
+                grid.innerHTML = '<div class="empty-state"><h2>No devices</h2><p>Add an account then add a device</p></div>';
+                return;
+            }
+            grid.innerHTML = devices.map(d => `
+                <div class="device-card" data-id="${d.id}">
+                    <div class="device-header">
+                        <span class="device-icon">🔌</span>
+                        <span class="device-status ${d.is_on ? 'on' : 'off'}" id="status-${d.id}">${d.is_on ? 'ON' : 'OFF'}</span>
+                    </div>
+                    <div class="device-name">${d.name}</div>
+                    <div class="device-info">${d.ip_address}</div>
+                    <div class="device-actions">
+                        <button class="btn-toggle ${d.is_on ? 'on' : ''}" onclick="toggleDevice(${d.id})" id="toggle-${d.id}">${d.is_on ? 'Turn Off' : 'Turn On'}</button>
+                        <button class="btn-delete" onclick="showEditModal(${d.id}, '${d.name.replace(/'/g, "\\'")}')" title="Edit name">✏</button>
+                        <button class="btn-delete" onclick="deleteDevice(${d.id})">🗑</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function toggleDevice(id) {
+            const btn = document.getElementById('toggle-' + id);
+            const status = document.getElementById('status-' + id);
+            btn.disabled = true; btn.textContent = '...';
+            status.className = 'device-status loading'; status.textContent = '...';
+
+            const res = await fetch('/api/devices/' + id + '/toggle', { method: 'POST' });
+            const data = await res.json();
+            if (data.error) { alert(data.error); loadDevices(); }
+            else { btn.className = 'btn-toggle ' + (data.is_on ? 'on' : ''); btn.textContent = data.is_on ? 'Turn Off' : 'Turn On'; status.className = 'device-status ' + (data.is_on ? 'on' : 'off'); status.textContent = data.is_on ? 'ON' : 'OFF'; }
+            btn.disabled = false;
+        }
+
+        async function deleteDevice(id) {
+            if (!confirm('Remove this device?')) return;
+            await fetch('/api/devices/' + id, { method: 'DELETE' });
+            loadDevices();
+        }
+
+        async function addDevice() {
+            const ip = document.getElementById('deviceIp').value.trim();
+            const accountId = document.getElementById('accountSelect').value || null;
+            if (!ip) return;
+
+            const res = await fetch('/api/devices', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ip_address: ip, account_id: accountId })
+            });
+
+            if (res.ok) { hideModals(); loadDevices(); }
+            else { const data = await res.json(); alert(data.error || 'Failed to add device'); }
+        }
+
+        loadAccounts();
+        loadDevices();
+    </script>
+</body>
+</html>

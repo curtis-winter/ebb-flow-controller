@@ -1,0 +1,699 @@
+2026-04-19 00:37:30,904 ERROR: Exception on /api/accounts [GET]
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask_cors/extension.py", line 176, in wrapped_function
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+                                                ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/backend/app.py", line 120, in get_accounts
+    accounts = conn.execute('SELECT id, name, provider, created_at FROM accounts ORDER BY name').fetchall()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: no such table: accounts
+2026-04-19 00:37:53,744 ERROR: Exception on /api/accounts [POST]
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask_cors/extension.py", line 176, in wrapped_function
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+                                                ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/backend/app.py", line 142, in create_account
+    conn.execute(
+sqlite3.OperationalError: no such table: accounts
+2026-04-19 00:38:06,403 ERROR: Exception on /api/accounts [POST]
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask_cors/extension.py", line 176, in wrapped_function
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+                                                ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/backend/app.py", line 142, in create_account
+    conn.execute(
+sqlite3.OperationalError: no such table: accounts
+2026-04-19 00:39:46,369 ERROR: Exception on /api/accounts [GET]
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask_cors/extension.py", line 176, in wrapped_function
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+                                                ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/backend/app.py", line 120, in get_accounts
+    accounts = conn.execute('SELECT id, name, provider, created_at FROM accounts ORDER BY name').fetchall()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: no such table: accounts
+2026-04-19 00:39:46,370 ERROR: Exception on /api/devices [GET]
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask_cors/extension.py", line 176, in wrapped_function
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+                                                ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/backend/app.py", line 168, in get_devices
+    devices = conn.execute('SELECT * FROM devices ORDER BY created_at DESC').fetchall()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+sqlite3.OperationalError: no such table: devices
+2026-04-19 00:39:59,679 ERROR: Exception on /api/accounts [POST]
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask_cors/extension.py", line 176, in wrapped_function
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+                                                ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/backend/app.py", line 142, in create_account
+    conn.execute(
+sqlite3.OperationalError: no such table: accounts
+2026-04-19 00:40:11,643 ERROR: Exception on /api/accounts [POST]
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask_cors/extension.py", line 176, in wrapped_function
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+                                                ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/backend/app.py", line 142, in create_account
+    conn.execute(
+sqlite3.OperationalError: no such table: accounts
+2026-04-19 00:41:52,772 ERROR: Error getting device info for 10.0.0.150: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 00:41:52,782 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x799643e71710>
+2026-04-19 00:41:52,782 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x799643e35860>, 34673.283335462)])']
+connector: <aiohttp.connector.TCPConnector object at 0x799643ed4490>
+2026-04-19 00:45:43,421 ERROR: Error getting device info for 10.0.0.150: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 00:45:43,431 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x75321fc37390>
+2026-04-19 00:45:43,431 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x75321fdc4ec0>, 34903.932264753)])']
+connector: <aiohttp.connector.TCPConnector object at 0x75321fc376d0>
+2026-04-19 00:47:54,850 ERROR: Error getting device info for 10.0.0.150: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 00:47:54,860 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x73bd04c7d1d0>
+2026-04-19 00:47:54,860 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x73bd04e14ec0>, 35035.361545163)])']
+connector: <aiohttp.connector.TCPConnector object at 0x73bd04c7e1d0>
+2026-04-19 00:54:41,617 ERROR: Error getting device info for 10.0.0.150: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 00:54:41,720 ERROR: Fallback also failed for 10.0.0.150: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 00:54:41,732 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x700a031d1710>
+2026-04-19 00:54:41,733 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x700a03362900>, 35442.128376427)])']
+connector: <aiohttp.connector.TCPConnector object at 0x700a031d3310>
+2026-04-19 00:54:41,733 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x700a031d0b50>
+2026-04-19 00:54:41,733 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x700a03361080>, 35442.230828744)])']
+connector: <aiohttp.connector.TCPConnector object at 0x700a031d0b10>
+2026-04-19 00:59:46,874 ERROR: Error getting device info for 10.0.0.150: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 00:59:46,935 ERROR: Fallback also failed for 10.0.0.150: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 00:59:46,986 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7e3980a99f90>
+2026-04-19 00:59:46,986 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7e3980c20fa0>, 35747.385631917)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7e3980a99e10>
+2026-04-19 00:59:46,986 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7e3980aa6ed0>
+2026-04-19 00:59:46,986 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7e3980c21160>, 35747.445790462)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7e3980aa6f50>
+2026-04-19 01:00:22,545 ERROR: Error getting device info for 10.0.0.150: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:00:25,330 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7e3980aa7bd0>
+2026-04-19 01:00:25,331 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7e3980c22ac0>, 35783.0560162)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7e3980aa7dd0>
+2026-04-19 01:00:25,377 ERROR: Error getting device info for 10.0.0.150: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:00:28,259 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7e3980aa7fd0>
+2026-04-19 01:00:28,260 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7e3980c234d0>, 35785.888100181)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7e3980aa7290>
+2026-04-19 01:01:15,736 ERROR: Error getting device info for 10.0.0.150: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:01:18,415 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7e3982343b50>
+2026-04-19 01:01:18,415 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7e3980c20ec0>, 35836.247066729)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7e3980caba90>
+2026-04-19 01:04:44,997 ERROR: Error getting device state: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:04:44,998 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x760f2a6d5e10>
+2026-04-19 01:04:44,998 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x760f2a861010>, 36045.508469487)])']
+connector: <aiohttp.connector.TCPConnector object at 0x760f2a6d5ed0>
+2026-04-19 01:05:52,302 ERROR: Error getting device state: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:05:52,302 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x760f2b5c8110>
+2026-04-19 01:05:52,302 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x760f2a878d70>, 36112.813073832)])']
+connector: <aiohttp.connector.TCPConnector object at 0x760f2a6c70d0>
+2026-04-19 01:10:00,382 ERROR: Error toggling device: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:10:00,382 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7f4723530e10>
+2026-04-19 01:10:00,382 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7f47236c2c80>, 36360.893090748)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7f4723528a50>
+2026-04-19 01:12:19,072 ERROR: Error getting device info for 10.0.0.150: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:12:19,082 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7f47238844d0>
+2026-04-19 01:12:19,082 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7f47236b90f0>, 36499.583212994)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7f472442bf50>
+2026-04-19 01:13:23,895 ERROR: Error getting device info for 10.0.0.150: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:13:23,907 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7f472352b310>
+2026-04-19 01:13:23,907 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7f47236bac10>, 36564.405915164)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7f4723529e90>
+2026-04-19 01:14:20,486 ERROR: Error getting device info for 10.0.0.150: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:14:20,498 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7f4723529f50>
+2026-04-19 01:14:20,498 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7f47236ba350>, 36620.996941488)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7f472352a710>
+2026-04-19 01:18:00,881 ERROR: Error getting device state: ('Device connection error: 10.0.0.150: Server disconnected', ServerDisconnectedError('Server disconnected'))
+2026-04-19 01:18:00,881 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x73a0da5ed010>
+2026-04-19 01:19:02,120 ERROR: Error getting device state: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:19:02,120 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x79d031067d10>
+2026-04-19 01:19:02,120 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x79d030fe10f0>, 36902.631283898)])']
+connector: <aiohttp.connector.TCPConnector object at 0x79d031067bd0>
+2026-04-19 01:20:19,531 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x71c9fca36510>
+2026-04-19 01:20:19,531 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x71c9fbd7ee40>, 36978.694673311)])']
+connector: <aiohttp.connector.TCPConnector object at 0x71c9fbbf5890>
+2026-04-19 01:20:19,943 ERROR: Exception on /api/devices/27/toggle [POST]
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 1511, in wsgi_app
+    response = self.full_dispatch_request()
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 919, in full_dispatch_request
+    rv = self.handle_user_exception(e)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask_cors/extension.py", line 176, in wrapped_function
+    return cors_after_request(app.make_response(f(*args, **kwargs)))
+                                                ^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 917, in full_dispatch_request
+    rv = self.dispatch_request()
+         ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/flask/app.py", line 902, in dispatch_request
+    return self.ensure_sync(self.view_functions[rule.endpoint])(**view_args)  # type: ignore[no-any-return]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/backend/app.py", line 28, in wrapper
+    return loop.run_until_complete(func(*args, **kwargs))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/asyncio/base_events.py", line 654, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "/app/backend/app.py", line 337, in toggle_device
+    state = await _toggle_device_state(credentials, parent_ip, child_id)
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/app/backend/app.py", line 314, in _toggle_device_state
+    await child.toggle()
+          ^^^^^^^^^^^^
+  File "/usr/local/lib/python3.11/site-packages/kasa/device.py", line 638, in __getattr__
+    raise AttributeError(f"Device has no attribute {name!r}")
+AttributeError: Device has no attribute 'toggle'
+2026-04-19 01:22:30,888 ERROR: Error toggling device with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:22:32,655 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x72d071b19790>
+2026-04-19 01:22:32,656 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x72d071ca9080>, 37111.399491183)])']
+connector: <aiohttp.connector.TCPConnector object at 0x72d071b19610>
+2026-04-19 01:22:40,184 ERROR: Error getting device state with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:22:41,868 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x72d071b19b90>
+2026-04-19 01:22:41,868 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x72d071ca0fa0>, 37120.695236936)])']
+connector: <aiohttp.connector.TCPConnector object at 0x72d071b19f50>
+2026-04-19 01:23:05,829 ERROR: Error getting device state with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:23:08,083 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x72d071b1b910>
+2026-04-19 01:23:08,083 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x72d071ca2dd0>, 37146.340436389)])']
+connector: <aiohttp.connector.TCPConnector object at 0x72d071b1b510>
+2026-04-19 01:23:08,290 ERROR: Error getting device state with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:23:10,131 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x72d071b45b10>
+2026-04-19 01:23:10,131 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x72d071caaeb0>, 37148.801237756)])']
+connector: <aiohttp.connector.TCPConnector object at 0x72d071b457d0>
+2026-04-19 01:23:18,724 ERROR: Error toggling device with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:23:19,684 ERROR: Fallback also failed: ('Device connection error: 10.0.0.150: [Errno 104] Connection reset by peer', ClientOSError(104, 'Connection reset by peer'))
+2026-04-19 01:23:19,684 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x72d071b45c10>
+2026-04-19 01:23:19,684 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x72d071ca9080>, 37159.233173732)])']
+connector: <aiohttp.connector.TCPConnector object at 0x72d071b45c90>
+2026-04-19 01:23:19,684 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x72d071b65b10>
+2026-04-19 01:23:20,031 ERROR: Error getting device state with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:23:20,206 ERROR: Fallback also failed: Unable to query the device 10.0.0.150:9999: [Errno 104] Connection reset by peer
+2026-04-19 01:23:20,206 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x72d071b56090>
+2026-04-19 01:23:20,206 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x72d071ca0fa0>, 37160.541822423)])']
+connector: <aiohttp.connector.TCPConnector object at 0x72d071b55f90>
+2026-04-19 01:24:56,119 ERROR: Error toggling device with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:24:57,877 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x72d071b67c90>
+2026-04-19 01:24:57,878 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x72d071cab310>, 37256.629817123)])']
+connector: <aiohttp.connector.TCPConnector object at 0x72d071b672d0>
+2026-04-19 01:24:59,413 ERROR: Error toggling device with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:25:01,767 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x72d071b6cc10>
+2026-04-19 01:25:01,767 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x72d071ca3380>, 37259.92467218)])']
+connector: <aiohttp.connector.TCPConnector object at 0x72d071b6cbd0>
+2026-04-19 01:25:10,765 ERROR: Error toggling device with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:25:12,784 ERROR: Fallback also failed: ('Device connection error: 10.0.0.150: Server disconnected', ServerDisconnectedError('Server disconnected'))
+2026-04-19 01:25:12,785 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x72d071b6d450>
+2026-04-19 01:25:12,785 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x72d071ca3cb0>, 37271.276540611)])']
+connector: <aiohttp.connector.TCPConnector object at 0x72d071b6d650>
+2026-04-19 01:25:12,785 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x72d073b32f50>
+2026-04-19 01:25:17,290 ERROR: Error toggling device with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:25:19,156 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x72d071b65790>
+2026-04-19 01:25:19,156 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x72d071cab2a0>, 37277.800791176)])']
+connector: <aiohttp.connector.TCPConnector object at 0x72d071b677d0>
+2026-04-19 01:25:20,293 ERROR: Error toggling device with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:25:22,433 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x72d071b677d0>
+2026-04-19 01:25:22,433 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x72d071cab310>, 37280.804257698)])']
+connector: <aiohttp.connector.TCPConnector object at 0x72d071b66910>
+2026-04-19 01:25:36,001 ERROR: Error toggling device with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:25:36,143 ERROR: Fallback also failed: Unable to query the device 10.0.0.150:9999: [Errno 104] Connection reset by peer
+2026-04-19 01:25:36,143 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x72d071b667d0>
+2026-04-19 01:25:36,143 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x72d071cab380>, 37296.512383038)])']
+connector: <aiohttp.connector.TCPConnector object at 0x72d071b67c90>
+2026-04-19 01:26:15,405 ERROR: Error toggling device with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:26:17,524 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x72d071ba6c90>
+2026-04-19 01:26:17,525 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x72d071cabbd0>, 37335.915822006)])']
+connector: <aiohttp.connector.TCPConnector object at 0x72d071ba6c50>
+2026-04-19 01:26:18,607 ERROR: Error toggling device with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:26:20,621 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x72d071b6cd50>
+2026-04-19 01:26:20,621 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x72d071ca2dd0>, 37339.118378712)])']
+connector: <aiohttp.connector.TCPConnector object at 0x72d071b6d750>
+2026-04-19 01:27:08,858 ERROR: Error toggling device with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:27:10,606 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x72d071b6d3d0>
+2026-04-19 01:27:10,606 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x72d071ca3540>, 37389.369651891)])']
+connector: <aiohttp.connector.TCPConnector object at 0x72d071b6cd90>
+2026-04-19 01:27:18,886 ERROR: Error getting device state with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:27:20,399 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x72d071b6cf90>
+2026-04-19 01:27:20,399 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x72d071ca2dd0>, 37399.39693367)])']
+connector: <aiohttp.connector.TCPConnector object at 0x72d071b6d150>
+2026-04-19 01:28:17,965 ERROR: Error toggling device with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:28:21,837 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7927375ce790>
+2026-04-19 01:28:21,837 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7927363c90f0>, 37458.476453388)])']
+connector: <aiohttp.connector.TCPConnector object at 0x792736241550>
+2026-04-19 01:28:21,979 ERROR: Error getting device state with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:28:23,476 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x79273626cd90>
+2026-04-19 01:28:23,476 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7927363caf20>, 37462.490167591)])']
+connector: <aiohttp.connector.TCPConnector object at 0x79273626ce50>
+2026-04-19 01:30:29,900 ERROR: Error toggling device with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:30:33,155 ERROR: Error toggling device with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:30:33,155 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x79273623f790>
+2026-04-19 01:30:33,155 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7927363ccf30>, 37590.411029618)])']
+connector: <aiohttp.connector.TCPConnector object at 0x79273623f050>
+2026-04-19 01:30:36,857 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x79273628ba90>
+2026-04-19 01:30:36,857 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7927363cb380>, 37593.666015934)])']
+connector: <aiohttp.connector.TCPConnector object at 0x79273628ba50>
+2026-04-19 01:30:36,973 ERROR: Error toggling device with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:30:40,340 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x792737757d10>
+2026-04-19 01:30:40,340 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7927363cedd0>, 37597.484669504)])']
+connector: <aiohttp.connector.TCPConnector object at 0x79273623df50>
+2026-04-19 01:30:44,972 ERROR: Error toggling device with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:30:45,859 ERROR: Fallback also failed: ('Device connection error: 10.0.0.150: [Errno 104] Connection reset by peer', ClientOSError(104, 'Connection reset by peer'))
+2026-04-19 01:30:45,859 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x79273625ba90>
+2026-04-19 01:30:45,859 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7927363ccf30>, 37605.483676478)])']
+connector: <aiohttp.connector.TCPConnector object at 0x79273625bbd0>
+2026-04-19 01:30:45,859 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x79273628b890>
+2026-04-19 01:30:50,999 ERROR: Error toggling device with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:30:54,260 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7927362429d0>
+2026-04-19 01:30:54,260 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7927363cbbd0>, 37611.50985981)])']
+connector: <aiohttp.connector.TCPConnector object at 0x792736242550>
+2026-04-19 01:30:56,844 ERROR: Error toggling device with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:30:56,967 ERROR: Fallback also failed: Unable to query the device 10.0.0.150:9999: [Errno 104] Connection reset by peer
+2026-04-19 01:30:56,967 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x79273623cd50>
+2026-04-19 01:30:56,967 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7927363cf380>, 37617.3549586)])']
+connector: <aiohttp.connector.TCPConnector object at 0x79273623d5d0>
+2026-04-19 01:31:01,586 ERROR: Error toggling device with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:31:01,711 ERROR: Fallback also failed: Unable to query the device 10.0.0.150:9999: [Errno 104] Connection reset by peer
+2026-04-19 01:31:01,711 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x79273629b250>
+2026-04-19 01:31:01,711 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7927363cd0f0>, 37622.097708293)])']
+connector: <aiohttp.connector.TCPConnector object at 0x79273629b210>
+2026-04-19 01:31:05,695 ERROR: Error toggling device with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:31:05,806 ERROR: Fallback also failed: Unable to query the device 10.0.0.150:9999: [Errno 104] Connection reset by peer
+2026-04-19 01:31:05,806 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x792737174e10>
+2026-04-19 01:31:05,806 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7927363cf150>, 37626.206378095)])']
+connector: <aiohttp.connector.TCPConnector object at 0x792736218a50>
+2026-04-19 01:31:09,279 ERROR: Error toggling device with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:31:10,156 ERROR: Fallback also failed: ('Device connection error: 10.0.0.150: [Errno 104] Connection reset by peer', ClientOSError(104, 'Connection reset by peer'))
+2026-04-19 01:31:10,157 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x792736294210>
+2026-04-19 01:31:10,157 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7927363cb7e0>, 37629.790015284)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7927362961d0>
+2026-04-19 01:31:10,157 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7927362ad410>
+2026-04-19 01:33:15,900 ERROR: Attempt 1: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:33:19,573 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652e67b90>
+2026-04-19 01:33:19,574 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x70f653014d70>, 37756.410938806)])']
+connector: <aiohttp.connector.TCPConnector object at 0x70f652e65cd0>
+2026-04-19 01:33:20,631 ERROR: Attempt 1: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:33:22,400 ERROR: Attempt 1 failed: ('Device connection error: 10.0.0.150: Server disconnected', ServerDisconnectedError('Server disconnected'))
+2026-04-19 01:33:23,401 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652e95510>
+2026-04-19 01:33:23,401 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x70f653016ba0>, 37761.142479466)])']
+connector: <aiohttp.connector.TCPConnector object at 0x70f652e955d0>
+2026-04-19 01:33:23,401 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f653084c90>
+2026-04-19 01:33:23,543 ERROR: Attempt 2: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:33:24,837 ERROR: Attempt 2 failed: ('Device connection error: 10.0.0.150: Server disconnected', ServerDisconnectedError('Server disconnected'))
+2026-04-19 01:33:25,838 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652e65cd0>
+2026-04-19 01:33:25,838 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x70f653014c20>, 37764.053850276)])']
+connector: <aiohttp.connector.TCPConnector object at 0x70f652e66210>
+2026-04-19 01:33:25,838 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652e95e10>
+2026-04-19 01:33:25,974 ERROR: Attempt 3: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:33:29,349 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652e65390>
+2026-04-19 01:33:29,349 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x70f653016c10>, 37766.485491439)])']
+connector: <aiohttp.connector.TCPConnector object at 0x70f652e67350>
+2026-04-19 01:33:30,410 ERROR: Attempt 1: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:33:32,125 ERROR: Attempt 1 failed: ('Device connection error: 10.0.0.150: Server disconnected', ServerDisconnectedError('Server disconnected'))
+2026-04-19 01:33:33,126 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652e97d10>
+2026-04-19 01:33:33,126 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x70f653016eb0>, 37770.921062503)])']
+connector: <aiohttp.connector.TCPConnector object at 0x70f652e97a90>
+2026-04-19 01:33:33,126 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652eb2ad0>
+2026-04-19 01:33:33,282 ERROR: Attempt 2: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:33:36,777 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652e97410>
+2026-04-19 01:33:36,777 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x70f653016b30>, 37773.793402773)])']
+connector: <aiohttp.connector.TCPConnector object at 0x70f652e95390>
+2026-04-19 01:33:45,715 ERROR: Attempt 1: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:33:46,813 ERROR: Attempt 1 failed: ('Device connection error: 10.0.0.150: Server disconnected', ServerDisconnectedError('Server disconnected'))
+2026-04-19 01:33:47,814 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652ebf550>
+2026-04-19 01:33:47,815 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x70f653016f20>, 37786.226421709)])']
+connector: <aiohttp.connector.TCPConnector object at 0x70f652ec7290>
+2026-04-19 01:33:47,815 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652ecca90>
+2026-04-19 01:33:47,960 ERROR: Attempt 2: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:33:52,149 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652ec7a10>
+2026-04-19 01:33:52,149 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x70f653015e10>, 37788.470829997)])']
+connector: <aiohttp.connector.TCPConnector object at 0x70f652ec5e90>
+2026-04-19 01:33:53,215 ERROR: Attempt 1: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:33:53,462 ERROR: Attempt 1 failed: Unable to query the device 10.0.0.150:9999: [Errno 104] Connection reset by peer
+2026-04-19 01:33:54,464 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652e76350>
+2026-04-19 01:33:54,464 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x70f653000fa0>, 37793.726548001)])']
+connector: <aiohttp.connector.TCPConnector object at 0x70f652e75a50>
+2026-04-19 01:33:54,790 ERROR: Attempt 2: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:33:54,902 ERROR: Attempt 2 failed: Unable to query the device 10.0.0.150:9999: [Errno 104] Connection reset by peer
+2026-04-19 01:33:55,903 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f653d73dd0>
+2026-04-19 01:33:55,903 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x70f653001160>, 37795.301731086)])']
+connector: <aiohttp.connector.TCPConnector object at 0x70f652e757d0>
+2026-04-19 01:33:56,230 ERROR: Attempt 3: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:33:56,362 ERROR: Attempt 3 failed: Unable to query the device 10.0.0.150:9999: [Errno 104] Connection reset by peer
+2026-04-19 01:33:56,362 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652e77150>
+2026-04-19 01:33:56,362 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x70f6530012b0>, 37796.741562062)])']
+connector: <aiohttp.connector.TCPConnector object at 0x70f652e76b90>
+2026-04-19 01:33:57,430 ERROR: Attempt 1: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:33:57,562 ERROR: Attempt 1 failed: Unable to query the device 10.0.0.150:9999: [Errno 104] Connection reset by peer
+2026-04-19 01:33:58,564 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652ec72d0>
+2026-04-19 01:33:58,564 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x70f653014d70>, 37797.941414859)])']
+connector: <aiohttp.connector.TCPConnector object at 0x70f652ec6110>
+2026-04-19 01:33:58,900 ERROR: Attempt 2: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:33:59,030 ERROR: Attempt 2 failed: Unable to query the device 10.0.0.150:9999: [Errno 104] Connection reset by peer
+2026-04-19 01:34:00,031 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652ec6290>
+2026-04-19 01:34:00,031 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x70f653017000>, 37799.4107244)])']
+connector: <aiohttp.connector.TCPConnector object at 0x70f652ec6b10>
+2026-04-19 01:34:00,358 ERROR: Attempt 3: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:34:03,710 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652ec6f50>
+2026-04-19 01:34:03,710 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x70f653017700>, 37800.86912326)])']
+connector: <aiohttp.connector.TCPConnector object at 0x70f652ec6950>
+2026-04-19 01:34:04,770 ERROR: Attempt 1: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:34:04,894 ERROR: Attempt 1 failed: Unable to query the device 10.0.0.150:9999: [Errno 104] Connection reset by peer
+2026-04-19 01:34:05,895 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652eb3e90>
+2026-04-19 01:34:05,895 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x70f653017540>, 37805.281361411)])']
+connector: <aiohttp.connector.TCPConnector object at 0x70f652eb20d0>
+2026-04-19 01:34:06,220 ERROR: Attempt 2: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:34:06,382 ERROR: Attempt 2 failed: Unable to query the device 10.0.0.150:9999: [Errno 104] Connection reset by peer
+2026-04-19 01:34:07,383 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652eb3e90>
+2026-04-19 01:34:07,383 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x70f653017540>, 37806.731162841)])']
+connector: <aiohttp.connector.TCPConnector object at 0x70f652eb11d0>
+2026-04-19 01:34:07,709 ERROR: Attempt 3: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:34:07,841 ERROR: Attempt 3 failed: Unable to query the device 10.0.0.150:9999: [Errno 104] Connection reset by peer
+2026-04-19 01:34:07,842 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652eb1fd0>
+2026-04-19 01:34:07,842 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x70f653017000>, 37808.220468832)])']
+connector: <aiohttp.connector.TCPConnector object at 0x70f652eb3fd0>
+2026-04-19 01:34:08,953 ERROR: Attempt 1: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:34:09,090 ERROR: Attempt 1 failed: Unable to query the device 10.0.0.150:9999: [Errno 104] Connection reset by peer
+2026-04-19 01:34:10,091 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652e91a50>
+2026-04-19 01:34:10,091 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x70f653000fa0>, 37809.46466733)])']
+connector: <aiohttp.connector.TCPConnector object at 0x70f652e91a10>
+2026-04-19 01:34:10,495 ERROR: Attempt 2: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:34:10,645 ERROR: Attempt 2 failed: Unable to query the device 10.0.0.150:9999: [Errno 104] Connection reset by peer
+2026-04-19 01:34:11,646 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652e4fd50>
+2026-04-19 01:34:11,646 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x70f653001160>, 37811.00633172)])']
+connector: <aiohttp.connector.TCPConnector object at 0x70f652e91710>
+2026-04-19 01:34:12,022 ERROR: Attempt 3: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:34:12,902 ERROR: Attempt 3 failed: ('Device connection error: 10.0.0.150: [Errno 104] Connection reset by peer', ClientOSError(104, 'Connection reset by peer'))
+2026-04-19 01:34:12,902 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652e91c50>
+2026-04-19 01:34:12,902 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x70f6530010f0>, 37812.533408568)])']
+connector: <aiohttp.connector.TCPConnector object at 0x70f652e91d10>
+2026-04-19 01:34:12,903 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x70f652e92d50>
+2026-04-19 01:35:34,176 ERROR: Attempt 1: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:35:40,480 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7d8cdb0ddf10>
+2026-04-19 01:35:40,481 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7d8cdb269160>, 37894.687517084)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7d8cdb0dfb10>
+2026-04-19 01:35:42,539 ERROR: Attempt 1: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:35:48,265 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7d8cdb0dcc50>
+2026-04-19 01:35:48,265 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7d8cdb26af90>, 37903.050745155)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7d8cdb109150>
+2026-04-19 01:35:50,326 ERROR: Attempt 1: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:35:56,044 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7d8cdb109150>
+2026-04-19 01:35:56,044 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7d8cdb269160>, 37910.836861379)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7d8cdb10b290>
+2026-04-19 01:35:58,105 ERROR: Attempt 1: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:36:00,282 ERROR: Attempt 1 failed: Unable to query the device 10.0.0.150:9999: [Errno 104] Connection reset by peer
+2026-04-19 01:36:02,284 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7d8cdb0da790>
+2026-04-19 01:36:02,284 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7d8cdb269080>, 37918.616556447)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7d8cdb0dab50>
+2026-04-19 01:36:02,616 ERROR: Attempt 2: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:36:05,505 ERROR: Attempt 2 failed: ('Device connection error: 10.0.0.150: [Errno 104] Connection reset by peer', ClientOSError(104, 'Connection reset by peer'))
+2026-04-19 01:36:07,507 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7d8cdb099f10>
+2026-04-19 01:36:07,507 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7d8cdb2690f0>, 37923.127145826)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7d8cdb2f4290>
+2026-04-19 01:36:07,507 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7d8cdb0db310>
+2026-04-19 01:36:07,833 ERROR: Attempt 3: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:36:09,976 ERROR: Attempt 3 failed: Unable to query the device 10.0.0.150:9999: [Errno 104] Connection reset by peer
+2026-04-19 01:36:09,976 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7d8cdbe74850>
+2026-04-19 01:36:09,977 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7d8cdb269240>, 37928.343801351)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7d8cdbfe0790>
+2026-04-19 01:36:12,031 ERROR: Attempt 1: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:36:14,152 ERROR: Attempt 1 failed: Unable to query the device 10.0.0.150:9999: [Errno 104] Connection reset by peer
+2026-04-19 01:36:16,154 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7d8cdb10af10>
+2026-04-19 01:36:16,155 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7d8cdb26a200>, 37932.542280775)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7d8cdb10b290>
+2026-04-19 01:36:16,298 ERROR: Attempt 2: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:36:19,699 ERROR: Attempt 2 failed: ('Device connection error: 10.0.0.150: Server disconnected', ServerDisconnectedError('Server disconnected'))
+2026-04-19 01:36:21,702 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7d8cdb142f10>
+2026-04-19 01:36:21,702 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7d8cdb2690f0>, 37936.808768919)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7d8cdb142050>
+2026-04-19 01:36:21,702 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7d8cdb0f1390>
+2026-04-19 01:36:21,839 ERROR: Attempt 3: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:36:27,584 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7d8cdccc14d0>
+2026-04-19 01:36:27,585 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7d8cdb269010>, 37942.35037066)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7d8cdc5e1dd0>
+2026-04-19 01:37:13,533 ERROR: Attempt 1: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:37:19,470 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7d8cdb153290>
+2026-04-19 01:37:19,470 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7d8cdb269010>, 37994.044402019)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7d8cdb153250>
+2026-04-19 01:37:20,350 ERROR: Attempt 1: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:37:24,209 ERROR: Attempt 1 failed: ('Device connection error: 10.0.0.150: Server disconnected', ServerDisconnectedError('Server disconnected'))
+2026-04-19 01:37:26,211 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7d8cdb12b9d0>
+2026-04-19 01:37:26,211 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7d8cdb26b7e0>, 38000.861531688)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7d8cdb129950>
+2026-04-19 01:37:26,211 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7d8cdb152090>
+2026-04-19 01:37:26,348 ERROR: Attempt 2: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:37:32,260 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7d8cdb12b9d0>
+2026-04-19 01:37:32,260 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7d8cdb269240>, 38006.859674897)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7d8cdb129c10>
+2026-04-19 01:37:33,430 ERROR: Attempt 1: Error toggling with V2: Device response did not match our challenge on ip 10.0.0.150, check that your e-mail and password (both case-sensitive) are correct. 
+2026-04-19 01:37:39,373 ERROR: Unclosed client session
+client_session: <aiohttp.client.ClientSession object at 0x7d8cdb0f0fd0>
+2026-04-19 01:37:39,373 ERROR: Unclosed connector
+connections: ['deque([(<aiohttp.client_proto.ResponseHandler object at 0x7d8cdb269080>, 38013.9413881)])']
+connector: <aiohttp.connector.TCPConnector object at 0x7d8cdb0f0f90>
