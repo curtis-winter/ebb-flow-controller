@@ -47,8 +47,10 @@
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.7); display: flex; justify-content: center; align-items: center; z-index: 9999; opacity: 0; visibility: hidden; }
         .modal-overlay.active { opacity: 1; visibility: visible; }
         .modal { background-color: var(--bg-card); border: 1px solid var(--border-card); border-radius: 8px; padding: 24px; width: 90%; max-width: 400px; }
-        .app-alert { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--accent-red); color: white; padding: 12px 24px; border-radius: 6px; z-index: 10000; opacity: 0; transition: opacity 0.3s; }
-        .app-alert.show { opacity: 1; }
+        .app-alert { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: var(--bg-card); border: 1px solid var(--border-card); color: var(--text-primary); padding: 16px 24px; border-radius: 8px; z-index: 10000; opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s; min-width: 280px; text-align: center; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+        .app-alert.show { opacity: 1; visibility: visible; }
+        .app-alert.is-error { border-color: var(--accent-red); }
+        .app-alert-buttons { display: flex; gap: 12px; justify-content: center; margin-top: 16px; }
         .modal h2 { font-size: 18px; margin-bottom: 16px; }
         .modal-input { width: 100%; padding: 12px; border: 1px solid var(--border-card); border-radius: 6px; background-color: var(--bg-primary); color: var(--text-primary); font-family: inherit; font-size: 14px; margin-bottom: 12px; }
         .modal-input:focus { outline: none; border-color: var(--btn-primary); }
@@ -295,21 +297,21 @@
 
         function showAlert(message, isError = true) {
             const el = document.getElementById('appAlert');
-            el.textContent = message;
-            el.style.background = isError ? 'var(--accent-red)' : 'var(--accent-green)';
-            el.classList.add('show');
-            setTimeout(() => el.classList.remove('show'), 3000);
+            el.className = 'app-alert show' + (isError ? ' is-error' : '');
+            el.innerHTML = message + '<div class="app-alert-buttons"><button class="btn" onclick="this.parentElement.parentElement.classList.remove(\'show\')">OK</button></div>';
         }
 
         function showConfirm(message) {
             return new Promise(resolve => {
                 const el = document.getElementById('appAlert');
-                el.textContent = message + ' (OK to confirm, Cancel to abort)';
-                el.style.background = 'var(--accent-gold)';
-                el.style.color = 'var(--btn-text)';
-                el.classList.add('show');
-                el.onclick = () => { el.classList.remove('show'); resolve(false); };
-                setTimeout(() => { el.classList.remove('show'); resolve(true); }, 5000);
+                el.className = 'app-alert show';
+                el.innerHTML = message + '<div class="app-alert-buttons"><button class="btn" onclick="confirmResolve(true)">Confirm</button><button class="btn btn-secondary" onclick="confirmResolve(false)">Cancel</button></div>';
+                window.confirmResolve = (confirmed) => {
+                    el.classList.remove('show');
+                    delete window.confirmResolve;
+                    resolve(confirmed);
+                };
+                setTimeout(() => { el.classList.remove('show'); resolve(false); }, 10000);
             });
         }
 
@@ -353,7 +355,7 @@
             const component_type = document.getElementById('componentType').value;
             const name = document.getElementById('componentName').value.trim();
             const device_id = document.getElementById('componentDevice').value || null;
-            if (!name) { alert('Name required'); return; }
+            if (!name) { showAlert('Name required'); return; }
 
             await fetch('/api/components', {
                 method: 'POST',
@@ -710,7 +712,7 @@ const res = await fetch('/api/devices', {
         async function deleteAccount() {
             const accountId = document.getElementById('accountSelect').value;
             if (!accountId) return;
-            if (!confirm('Delete this account and all its devices?')) return;
+            if (!(await showConfirm('Delete this account and all its devices?'))) return;
             
             const res = await fetch('/api/accounts/' + accountId, { method: 'DELETE' });
             if (res.ok) {
@@ -798,7 +800,7 @@ const res = await fetch('/api/devices', {
         }
 
         async function deleteDevice(id) {
-            if (!confirm('Remove this device?')) return;
+            if (!(await showConfirm('Remove this device?'))) return;
             await fetch('/api/devices/' + id, { method: 'DELETE' });
             loadDevices();
         }
@@ -815,7 +817,7 @@ const res = await fetch('/api/devices', {
             });
 
             if (res.ok) { hideModals(); loadDevices(); }
-            else { const data = await res.json(); alert(data.error || 'Failed to add device'); }
+            else { const data = await res.json(); showAlert(data.error || 'Failed to add device'); }
         }
 
         loadAccounts();
