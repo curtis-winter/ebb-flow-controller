@@ -47,6 +47,8 @@
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.7); display: flex; justify-content: center; align-items: center; z-index: 9999; opacity: 0; visibility: hidden; }
         .modal-overlay.active { opacity: 1; visibility: visible; }
         .modal { background-color: var(--bg-card); border: 1px solid var(--border-card); border-radius: 8px; padding: 24px; width: 90%; max-width: 400px; }
+        .app-alert { position: fixed; top: 20px; left: 50%; transform: translateX(-50%); background: var(--accent-red); color: white; padding: 12px 24px; border-radius: 6px; z-index: 10000; opacity: 0; transition: opacity 0.3s; }
+        .app-alert.show { opacity: 1; }
         .modal h2 { font-size: 18px; margin-bottom: 16px; }
         .modal-input { width: 100%; padding: 12px; border: 1px solid var(--border-card); border-radius: 6px; background-color: var(--bg-primary); color: var(--text-primary); font-family: inherit; font-size: 14px; margin-bottom: 12px; }
         .modal-input:focus { outline: none; border-color: var(--btn-primary); }
@@ -94,6 +96,7 @@
     </style>
 </head>
 <body>
+    <div class="app-alert" id="appAlert"></div>
     <div class="container">
         <header>
             <h1>EBB Flow Controller</h1>
@@ -290,6 +293,29 @@
         let currentRackId = null;
         let currentRackStructure = null;
 
+        function showAlert(message, isError = true) {
+            const el = document.getElementById('appAlert');
+            el.textContent = message;
+            el.style.background = isError ? 'var(--accent-red)' : 'var(--accent-green)';
+            el.classList.add('show');
+            setTimeout(() => el.classList.remove('show'), 3000);
+        }
+
+        function showConfirm(message) {
+            return new Promise(resolve => {
+                const el = document.getElementById('appAlert');
+                el.textContent = message + ' (OK to confirm, Cancel to abort)';
+                el.style.background = 'var(--accent-gold)';
+                el.style.color = 'var(--btn-text)';
+                el.classList.add('show');
+                el.onclick = () => { el.classList.remove('show'); resolve(false); };
+                setTimeout(() => { el.classList.remove('show'); resolve(true); }, 5000);
+            });
+        }
+
+        let confirmHandler = null;
+        function setConfirmHandler(fn) { confirmHandler = fn; }
+
         function showTab(tabId) {
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
@@ -347,7 +373,7 @@
 
         async function createRack() {
             const name = document.getElementById('rackName').value.trim();
-            if (!name) { alert('Name required'); return; }
+            if (!name) { showAlert('Name required'); return; }
             await fetch('/api/racks', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -457,7 +483,7 @@
                                 ${aerators.length === 0 ? '<span style="color: var(--text-secondary); font-size: 12px;">Drag aerator here</span>' : ''}
                                 ${aerators.map(c => renderComponentChip(c)).join('')}
                             </div>
-                            <button class="btn-secondary" style="margin-top: 8px; font-size: 12px; padding: 6px 12px;" onclick="showComponentModal('reservoir', ${res.id})">+ Add Aerator</button>
+                            <button class="btn-secondary" style="margin-top: 8px; font-size: 12px; padding: 6px 12px;" onclick="showComponentModal('reservoir', ${res.id})">+ Add Device</button>
                         </div>
                     </div>
                 </div>
@@ -478,7 +504,7 @@
                                 ${pumps.length === 0 ? '<span style="color: var(--text-secondary); font-size: 12px;">Drag pump</span>' : ''}
                                 ${pumps.map(c => renderComponentChip(c)).join('')}
                             </div>
-                            <button class="btn-secondary" style="margin-top: 8px; font-size: 12px; padding: 6px 12px;" onclick="showComponentModal('shelf', ${shelf.id})">+ Add Pump</button>
+                            <button class="btn-secondary" style="margin-top: 8px; font-size: 12px; padding: 6px 12px;" onclick="showComponentModal('shelf', ${shelf.id})">+ Add Device</button>
                         </div>
                         <div>
                             <strong style="color: var(--btn-primary);">Lights:</strong>
@@ -509,13 +535,15 @@
         }
 
         async function removeComponent(id) {
-            if (!confirm('Remove this component?')) return;
+            const confirmed = await showConfirm('Remove this component?');
+            if (!confirmed) return;
             await fetch('/api/components/' + id, { method: 'DELETE' });
             loadRackStructure(currentRackId);
         }
 
         async function deleteCurrentRack() {
-            if (!confirm('Delete this rack and all its contents?')) return;
+            const confirmed = await showConfirm('Delete this rack and all its contents?');
+            if (!confirmed) return;
             await fetch('/api/racks/' + currentRackId, { method: 'DELETE' });
             currentRackId = null;
             currentRackStructure = null;
@@ -573,7 +601,7 @@
             const existingRes = await fetch('/api/components?parent_type=' + parentType + '&parent_id=' + parentId + '&device_id=' + deviceId);
             const existing = await existingRes.json();
             if (existing.length > 0) {
-                alert('This plug is already assigned to this component');
+                showAlert('This plug is already assigned to this component');
                 return;
             }
 
@@ -698,7 +726,7 @@ const res = await fetch('/api/devices', {
             const username = document.getElementById('accountEmail').value.trim();
             const password = document.getElementById('accountPassword').value;
 
-            if (!name || !username || !password) { alert('Please fill all fields'); return; }
+            if (!name || !username || !password) { showAlert('Please fill all fields'); return; }
 
             try {
                 const res = await fetch('/api/accounts', {
@@ -718,10 +746,10 @@ const res = await fetch('/api/devices', {
                     await loadDevices();
                 } else {
                     const data = await res.json();
-                    alert(data.error || 'Failed to create account');
+                    showAlert(data.error || 'Failed to create account');
                 }
             } catch (e) {
-                alert('Error: ' + e.message);
+                showAlert('Error: ' + e.message);
             }
         }
 
@@ -764,7 +792,7 @@ const res = await fetch('/api/devices', {
 
             const res = await fetch('/api/devices/' + id + '/toggle', { method: 'POST' });
             const data = await res.json();
-            if (data.error) { alert(data.error); loadDevices(); }
+            if (data.error) { showAlert(data.error); loadDevices(); }
             else { btn.className = 'btn-toggle ' + (data.is_on ? 'on' : ''); btn.textContent = data.is_on ? 'Turn Off' : 'Turn On'; status.className = 'device-status ' + (data.is_on ? 'on' : 'off'); status.textContent = data.is_on ? 'ON' : 'OFF'; }
             btn.disabled = false;
         }
