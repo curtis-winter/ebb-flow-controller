@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EBB Flow Controller</title>
+    <title>FlowBoard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600&display=swap" rel="stylesheet">
@@ -12,7 +12,9 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Outfit', sans-serif; background-color: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
         .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+        header { display: flex; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+        header h1 { margin: 0; line-height: 1; }
+        header svg + h1 { margin-left: 12px; }
         h1 { font-size: 24px; font-weight: 600; }
         .header-actions { display: flex; gap: 12px; align-items: center; }
         .account-select { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-card); padding: 10px 12px; border-radius: 6px; font-family: inherit; font-size: 14px; min-width: 150px; }
@@ -42,6 +44,8 @@
         .btn-toggle.on:hover { background-color: #c02e2a; }
         .btn-delete { background: transparent; color: var(--accent-red); padding: 10px; font-size: 18px; }
         .btn-delete:hover { background: rgba(219,58,52,0.1); }
+        .btn-small { background: transparent; color: var(--text-secondary); padding: 4px 8px; font-size: 14px; border: 1px solid var(--border-card); border-radius: 4px; }
+        .btn-small:hover { background: var(--border-card); }
         .empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
         .empty-state h2 { margin-bottom: 8px; color: var(--text-primary); }
         .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.7); display: flex; justify-content: center; align-items: center; z-index: 9999; opacity: 0; visibility: hidden; }
@@ -93,6 +97,16 @@
         .drop-zone { min-height: 50px; border: 2px dashed var(--border-card); border-radius: 6px; display: flex; flex-wrap: wrap; gap: 8px; padding: 10px; align-items: center; }
         .drop-zone.drag-over { border-color: var(--btn-primary); background: rgba(255,200,87,0.1); }
         .rack-actions { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+        .schedule-card { background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 8px; padding: 16px; display: flex; justify-content: space-between; align-items: center; }
+        .schedule-info { flex: 1; }
+        .schedule-name { font-weight: 600; margin-bottom: 8px; }
+        .schedule-details { display: flex; flex-wrap: wrap; gap: 12px; font-size: 13px; color: var(--text-secondary); }
+        .schedule-action { padding: 2px 8px; border-radius: 4px; }
+        .schedule-action.on { background: rgba(23,126,137,0.2); color: var(--accent-green); }
+        .schedule-action.off { background: rgba(219,58,52,0.2); color: var(--accent-red); }
+        .schedule-actions { display: flex; align-items: center; gap: 12px; }
+        .schedule-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+        .schedule-toggle input { width: 18px; height: 18px; }
 
         @media (max-width: 640px) { .devices-grid { grid-template-columns: 1fr; } header { flex-direction: column; align-items: flex-start; } .header-actions { width: 100%; flex-wrap: wrap; } .rack-builder { grid-template-columns: 1fr; } }
     </style>
@@ -101,7 +115,18 @@
     <div class="app-alert" id="appAlert"></div>
     <div class="container">
         <header>
-            <h1>EBB Flow Controller</h1>
+            <svg width="40" height="40" viewBox="0 0 40 40" style="flex-shrink: 0;">
+                <defs>
+                    <linearGradient id="waveGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#084c61"/>
+                        <stop offset="100%" style="stop-color:#177e89"/>
+                    </linearGradient>
+                </defs>
+                <path d="M4 20 Q10 12, 16 20 T28 20 T40 20 L40 40 L4 40 Z" fill="url(#waveGrad)" opacity="0.8"/>
+                <path d="M4 26 Q10 18, 16 26 T28 26 T40 26 L40 40 L4 40 Z" fill="url(#waveGrad)"/>
+                <circle cx="32" cy="10" r="4" fill="#ffc857"/>
+            </svg>
+            <h1>FlowBoard</h1>
         </header>
         
         <div class="tabs">
@@ -149,7 +174,11 @@
         </div>
         
         <div id="tab-grow-schedule" class="tab-content">
-            <p style="color: var(--text-secondary);">Grow schedule configuration coming soon...</p>
+            <div class="schedule-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2>Device Schedules</h2>
+                <button class="btn-primary" onclick="showScheduleModal()">+ Add Schedule</button>
+            </div>
+            <div id="schedulesList" style="display: grid; gap: 12px;"></div>
         </div>
     </div>
 
@@ -222,42 +251,42 @@
 
     <div class="modal-overlay" id="rackModal">
         <div class="modal">
-            <h2>New Grow Rack</h2>
+            <h2 id="rackModalLabel">New Grow Rack</h2>
             <div class="modal-row">
                 <label>Rack Name</label>
                 <input type="text" class="modal-input" id="rackName" placeholder="e.g., Main Rack">
             </div>
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="hideModals()">Cancel</button>
-                <button class="btn-primary" onclick="createRack()">Create</button>
+                <button class="btn-primary" onclick="createOrUpdateRack()">Save</button>
             </div>
         </div>
     </div>
 
     <div class="modal-overlay" id="shelfModal">
         <div class="modal">
-            <h2>Add Shelf</h2>
+            <h2 id="shelfModalLabel">Add Shelf</h2>
             <div class="modal-row">
                 <label>Shelf Name</label>
                 <input type="text" class="modal-input" id="shelfName" placeholder="e.g., Top Shelf">
             </div>
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="hideModals()">Cancel</button>
-                <button class="btn-primary" onclick="createShelf()">Add</button>
+                <button class="btn-primary" onclick="createOrUpdateShelf()">Save</button>
             </div>
         </div>
     </div>
 
     <div class="modal-overlay" id="reservoirModal">
         <div class="modal">
-            <h2>Add Reservoir</h2>
+            <h2 id="reservoirModalLabel">Add Reservoir</h2>
             <div class="modal-row">
                 <label>Reservoir Name</label>
                 <input type="text" class="modal-input" id="reservoirName" placeholder="e.g., Main Reservoir">
             </div>
             <div class="modal-actions">
                 <button class="btn-secondary" onclick="hideModals()">Cancel</button>
-                <button class="btn-primary" onclick="createReservoir()">Add</button>
+                <button class="btn-primary" onclick="createOrUpdateReservoir()">Save</button>
             </div>
         </div>
     </div>
@@ -291,11 +320,56 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="scheduleModal">
+        <div class="modal">
+            <h2>Add Schedule</h2>
+            <div class="modal-row">
+                <label>Device</label>
+                <select class="modal-select" id="scheduleDevice"></select>
+            </div>
+            <div class="modal-row">
+                <label>Schedule Name</label>
+                <input type="text" class="modal-input" id="scheduleName" placeholder="e.g., Morning Lights On">
+            </div>
+            <div class="modal-row">
+                <label>Action</label>
+                <select class="modal-select" id="scheduleAction">
+                    <option value="on">Turn On</option>
+                    <option value="off">Turn Off</option>
+                </select>
+            </div>
+            <div class="modal-row">
+                <label>Time</label>
+                <div style="display: flex; gap: 8px;">
+                    <input type="number" class="modal-input" id="scheduleHour" min="0" max="23" placeholder="Hour (0-23)" style="width: 120px;">
+                    <input type="number" class="modal-input" id="scheduleMinute" min="0" max="59" placeholder="Min (0-59)" style="width: 120px;">
+                </div>
+            </div>
+            <div class="modal-row">
+                <label>Days</label>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                    <label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="day0" checked> Sun</label>
+                    <label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="day1" checked> Mon</label>
+                    <label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="day2" checked> Tue</label>
+                    <label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="day3" checked> Wed</label>
+                    <label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="day4" checked> Thu</label>
+                    <label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="day5" checked> Fri</label>
+                    <label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="day6" checked> Sat</label>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="hideModals()">Cancel</button>
+                <button class="btn-primary" onclick="createSchedule()">Add</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let devices = [];
         let racks = [];
         let currentRackId = null;
         let currentRackStructure = null;
+        let schedules = [];
 
         function showAlert(message, isError = true) {
             const el = document.getElementById('appAlert');
@@ -326,14 +400,118 @@
             event.target.classList.add('active');
             document.getElementById('tab-' + tabId).classList.add('active');
             if (tabId === 'grow-layout') { loadRacks(); loadDevices(); renderAvailableDevices(); }
+            if (tabId === 'grow-schedule') { loadSchedules(); }
+        }
+
+        function showScheduleModal() {
+            populateScheduleDevices();
+            document.getElementById('scheduleModal').classList.add('active');
+            document.getElementById('scheduleName').focus();
+        }
+
+        async function populateScheduleDevices() {
+            const select = document.getElementById('scheduleDevice');
+            select.innerHTML = devices.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+        }
+
+        async function loadSchedules() {
+            const res = await fetch('/api/schedules');
+            schedules = await res.json();
+            renderSchedules();
+        }
+
+        function renderSchedules() {
+            const list = document.getElementById('schedulesList');
+            if (schedules.length === 0) {
+                list.innerHTML = '<div class="empty-state"><h2>No schedules</h2><p>Create a schedule to automate device control</p></div>';
+                return;
+            }
+            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+            list.innerHTML = schedules.map(s => `
+                <div class="schedule-card">
+                    <div class="schedule-info">
+                        <div class="schedule-name">${s.name}</div>
+                        <div class="schedule-details">
+                            <span class="schedule-device">${s.device_name}</span>
+                            <span class="schedule-action ${s.action}">${s.action === 'on' ? '💡 On' : '⭕ Off'}</span>
+                            <span class="schedule-time">${String(s.hour).padStart(2, '0')}:${String(s.minute).padStart(2, '0')}</span>
+                            <span class="schedule-days">${s.days.split(',').map(d => dayNames[parseInt(d)]).join(', ')}</span>
+                        </div>
+                    </div>
+                    <div class="schedule-actions">
+                        <label class="schedule-toggle">
+                            <input type="checkbox" ${s.enabled ? 'checked' : ''} onchange="toggleSchedule(${s.id}, this.checked)">
+                            <span>${s.enabled ? 'Enabled' : 'Disabled'}</span>
+                        </label>
+                        <button class="btn-delete" onclick="deleteSchedule(${s.id})">🗑</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function createSchedule() {
+            const device_id = document.getElementById('scheduleDevice').value;
+            const name = document.getElementById('scheduleName').value.trim();
+            const action = document.getElementById('scheduleAction').value;
+            const hour = parseInt(document.getElementById('scheduleHour').value);
+            const minute = parseInt(document.getElementById('scheduleMinute').value);
+
+            if (!name) { showAlert('Name required'); return; }
+            if (isNaN(hour) || hour < 0 || hour > 23) { showAlert('Valid hour (0-23) required'); return; }
+            if (isNaN(minute) || minute < 0 || minute > 59) { showAlert('Valid minute (0-59) required'); return; }
+
+            const days = [];
+            for (let i = 0; i <= 6; i++) {
+                if (document.getElementById('day' + i).checked) days.push(i);
+            }
+            if (days.length === 0) { showAlert('Select at least one day'); return; }
+
+            const res = await fetch('/api/schedules', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ device_id: parseInt(device_id), name, action, hour, minute, days: days.join(',') })
+            });
+
+            if (res.ok) {
+                hideModals();
+                document.getElementById('scheduleName').value = '';
+                document.getElementById('scheduleHour').value = '';
+                document.getElementById('scheduleMinute').value = '';
+                loadSchedules();
+                showAlert('Schedule created', false);
+            } else {
+                const data = await res.json();
+                showAlert(data.error || 'Failed to create schedule');
+            }
+        }
+
+        async function toggleSchedule(id, enabled) {
+            await fetch('/api/schedules/' + id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ enabled: enabled ? 1 : 0 })
+            });
+            loadSchedules();
+        }
+
+        async function deleteSchedule(id) {
+            if (!(await showConfirm('Delete this schedule?'))) return;
+            await fetch('/api/schedules/' + id, { method: 'DELETE' });
+            loadSchedules();
         }
 
         function showAccountModal() { document.getElementById('accountModal').classList.add('active'); document.getElementById('accountName').focus(); }
         function showAddModal() { document.getElementById('addModal').classList.add('active'); document.getElementById('deviceIp').focus(); }
         function showDiscoverModal() { document.getElementById('discoverModal').classList.add('active'); runDiscovery(); }
-        function showRackModal() { document.getElementById('rackModal').classList.add('active'); document.getElementById('rackName').focus(); }
-        function showShelfModal() { document.getElementById('shelfModal').classList.add('active'); document.getElementById('shelfName').focus(); }
-        function showReservoirModal() { document.getElementById('reservoirModal').classList.add('active'); document.getElementById('reservoirName').focus(); }
+        function showRackModal() { currentEditRackId = null; document.getElementById('rackModalLabel').textContent = 'New Rack'; document.getElementById('rackName').value = ''; document.getElementById('rackModal').classList.add('active'); document.getElementById('rackName').focus(); }
+        function showEditRackModal(id, name) { currentEditRackId = id; document.getElementById('rackModalLabel').textContent = 'Edit Rack'; document.getElementById('rackName').value = name; document.getElementById('rackModal').classList.add('active'); document.getElementById('rackName').focus(); }
+        let currentEditRackId = null;
+        function showShelfModal() { currentEditShelfId = null; document.getElementById('shelfModalLabel').textContent = 'New Shelf'; document.getElementById('shelfName').value = ''; document.getElementById('shelfModal').classList.add('active'); document.getElementById('shelfName').focus(); }
+        let currentEditShelfId = null;
+        function showEditShelfModal(id, name) { currentEditShelfId = id; document.getElementById('shelfModalLabel').textContent = 'Edit Shelf'; document.getElementById('shelfName').value = name; document.getElementById('shelfModal').classList.add('active'); document.getElementById('shelfName').focus(); }
+        function showReservoirModal() { currentEditReservoirId = null; document.getElementById('reservoirModalLabel').textContent = 'New Reservoir'; document.getElementById('reservoirName').value = ''; document.getElementById('reservoirModal').classList.add('active'); document.getElementById('reservoirName').focus(); }
+        let currentEditReservoirId = null;
+        function showEditReservoirModal(id, name) { currentEditReservoirId = id; document.getElementById('reservoirModalLabel').textContent = 'Edit Reservoir'; document.getElementById('reservoirName').value = name; document.getElementById('reservoirModal').classList.add('active'); document.getElementById('reservoirName').focus(); }
         function showComponentModal(ptype, pid) { 
             currentComponentParent = { type: ptype, id: pid };
             document.getElementById('componentModal').classList.add('active');
@@ -375,40 +553,73 @@
             loadRackStructure(currentRackId);
         }
 
-        async function createRack() {
+        async function createOrUpdateRack() {
             const name = document.getElementById('rackName').value.trim();
             if (!name) { showAlert('Name required'); return; }
-            await fetch('/api/racks', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name })
-            });
-            hideModals();
-            document.getElementById('rackName').value = '';
-            loadRacks();
+            if (currentEditRackId) {
+                await fetch('/api/racks/' + currentEditRackId, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                hideModals();
+                document.getElementById('rackName').value = '';
+                currentEditRackId = null;
+                loadRacks();
+            } else {
+                const res = await fetch('/api/racks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                const newRack = await res.json();
+                hideModals();
+                document.getElementById('rackName').value = '';
+                currentEditRackId = null;
+                await loadRacks();
+                selectRack(newRack.id);
+            }
         }
 
-        async function createShelf() {
+        async function createOrUpdateShelf() {
             const name = document.getElementById('shelfName').value.trim() || 'New Shelf';
-            await fetch('/api/racks/' + currentRackId + '/shelves', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, position: currentRackStructure.shelves.length })
-            });
+            if (currentEditShelfId) {
+                await fetch('/api/racks/' + currentRackId + '/shelves/' + currentEditShelfId, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+            } else {
+                await fetch('/api/racks/' + currentRackId + '/shelves', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, position: currentRackStructure.shelves.length })
+                });
+            }
             hideModals();
             document.getElementById('shelfName').value = '';
+            currentEditShelfId = null;
             loadRackStructure(currentRackId);
         }
 
-        async function createReservoir() {
+        async function createOrUpdateReservoir() {
             const name = document.getElementById('reservoirName').value.trim() || 'New Reservoir';
-            await fetch('/api/racks/' + currentRackId + '/reservoirs', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, position: currentRackStructure.reservoirs.length })
-            });
+            if (currentEditReservoirId) {
+                await fetch('/api/racks/' + currentRackId + '/reservoirs/' + currentEditReservoirId, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+            } else {
+                await fetch('/api/racks/' + currentRackId + '/reservoirs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, position: currentRackStructure.reservoirs.length })
+                });
+            }
             hideModals();
             document.getElementById('reservoirName').value = '';
+            currentEditReservoirId = null;
             loadRackStructure(currentRackId);
         }
 
@@ -416,6 +627,19 @@
             const res = await fetch('/api/racks');
             racks = await res.json();
             renderRackList();
+            const defaultRack = racks.find(r => r.is_default);
+            if (defaultRack && !currentRackId) {
+                selectRack(defaultRack.id);
+            } else if (racks.length > 0 && !currentRackId) {
+                selectRack(racks[0].id);
+            }
+        }
+
+        async function setDefaultRack(rackId) {
+            await fetch('/api/racks/default/' + rackId, { method: 'POST' });
+            racks.forEach(r => r.is_default = r.id === rackId ? 1 : 0);
+            renderRackList();
+            showAlert('Default rack set', false);
         }
 
         function renderRackList() {
@@ -426,7 +650,11 @@
             }
             list.innerHTML = racks.map(r => `
                 <div class="rack-list-item ${r.id === currentRackId ? 'active' : ''}" onclick="selectRack(${r.id})">
-                    <strong>${r.name}</strong>
+                    <span style="cursor: pointer;">${r.is_default ? '⭐ ' : ''}${r.name}</span>
+                    <div style="display: flex; gap: 4px;">
+                        ${!r.is_default ? `<button class="btn-small" onclick="event.stopPropagation(); setDefaultRack(${r.id})" title="Set as default">⭐</button>` : ''}
+                        <button class="btn-small" onclick="event.stopPropagation(); showEditRackModal(${r.id}, '${r.name.replace(/'/g, "\\'")}')">✏</button>
+                    </div>
                 </div>
             `).join('');
         }
@@ -444,6 +672,7 @@
             const res = await fetch('/api/racks/' + rackId + '/structure');
             currentRackStructure = await res.json();
             renderRackCanvas();
+            renderAvailableDevices();
         }
 
         function renderRackCanvas() {
@@ -455,14 +684,6 @@
 
             let html = `<h2>${currentRackStructure.rack.name}</h2>`;
 
-            if (currentRackStructure.reservoirs.length > 0) {
-                html += '<h3 style="color: var(--accent-green); margin: 16px 0 8px;">Reservoirs</h3>';
-                currentRackStructure.reservoirs.forEach(res => {
-                    const comps = currentRackStructure.components.filter(c => c.parent_type === 'reservoir' && c.parent_id === res.id);
-                    html += renderReservoir(res, comps);
-                });
-            }
-
             if (currentRackStructure.shelves.length > 0) {
                 html += '<h3 style="color: var(--accent-teal); margin: 16px 0 8px;">Shelves</h3>';
                 currentRackStructure.shelves.sort((a,b) => a.position - b.position).forEach(shelf => {
@@ -473,6 +694,14 @@
                 html += '<p style="color: var(--text-secondary); margin-top: 20px;">Add shelves to this rack</p>';
             }
 
+            if (currentRackStructure.reservoirs.length > 0) {
+                html += '<h3 style="color: var(--accent-green); margin: 16px 0 8px;">Reservoirs</h3>';
+                currentRackStructure.reservoirs.forEach(res => {
+                    const comps = currentRackStructure.components.filter(c => c.parent_type === 'reservoir' && c.parent_id === res.id);
+                    html += renderReservoir(res, comps);
+                });
+            }
+
             canvas.innerHTML = html;
         }
 
@@ -481,7 +710,10 @@
             return `
                 <div class="reservoir-item" data-id="${res.id}" data-type="reservoir">
                     <div style="flex: 1;">
-                        <strong>${res.name}</strong>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <strong>${res.name}</strong>
+                            <button class="btn-small" onclick="showEditReservoirModal(${res.id}, '${res.name.replace(/'/g, "\\'")}')">✏</button>
+                        </div>
                         <div style="margin-top: 8px;">
                             <strong style="color: var(--accent-green);">Aerators:</strong>
                             <div class="component-slot" data-parent="reservoir" data-id="${res.id}" data-type="aerator">
@@ -501,7 +733,10 @@
             const sensors = comps.filter(c => c.component_type === 'sensor');
             return `
                 <div class="shelf-item" data-id="${shelf.id}" data-type="shelf">
-                    <strong>${shelf.name}</strong>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <strong>${shelf.name}</strong>
+                        <button class="btn-small" onclick="showEditShelfModal(${shelf.id}, '${shelf.name.replace(/'/g, "\\'")}')">✏</button>
+                    </div>
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-top: 12px;">
                         <div>
                             <strong style="color: var(--accent-teal);">Pumps:</strong>

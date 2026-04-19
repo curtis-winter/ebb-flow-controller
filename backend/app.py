@@ -2,17 +2,21 @@ import os
 import json
 import asyncio
 import logging
+from datetime import datetime
 from functools import wraps
 from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
 import sqlite3
 from kasa import Discover, Credentials
 from cryptography.fernet import Fernet
+from apscheduler.schedulers.background import BackgroundScheduler
 
 logging.basicConfig(filename='/data/app.log', level=logging.INFO, format='%(asctime)s %(levelname)s: %(message)s')
 
 app = Flask(__name__, static_folder='../frontend', template_folder='../frontend')
 CORS(app)
+
+scheduler = BackgroundScheduler()
 
 DB_PATH = '/data/devices.db'
 ENCRYPTION_KEY_FILE = '/data/encryption.key'
@@ -98,6 +102,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS racks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
+            is_default INTEGER DEFAULT 0,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
@@ -136,6 +141,20 @@ def init_db():
         conn.execute('ALTER TABLE components ADD COLUMN device_id INTEGER REFERENCES devices(id)')
     except:
         pass
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS schedules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            device_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            action TEXT NOT NULL DEFAULT 'on',
+            hour INTEGER NOT NULL,
+            minute INTEGER NOT NULL,
+            days TEXT NOT NULL DEFAULT '0,1,2,3,4,5,6',
+            enabled INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+        )
+    ''')
     conn.commit()
     conn.close()
 
@@ -383,13 +402,13 @@ async def _get_device_state(credentials, parent_ip, child_id):
     
     return None
 
-async def _toggle_device_state(credentials, parent_ip, child_id):
+async def _toggle_device_state(credentials, parent_ip, child_id, desired_state=None):
     def do_toggle(plug, child_id):
         for child in plug.children or []:
             if child.device_id == child_id:
                 return child
         return None
-    
+
     for attempt in range(3):
         try:
             try:
@@ -407,12 +426,18 @@ async def _toggle_device_state(credentials, parent_ip, child_id):
                 await asyncio.sleep(2)
                 plug = await Discover.discover_single(parent_ip, credentials=credentials, port=9999)
                 await plug.update()
-            
+
             if child_id:
                 child = do_toggle(plug, child_id)
                 if child:
                     await child.update()
-                    await child.turn_on() if not child.is_on else await child.turn_off()
+                    if desired_state is not None:
+                        if desired_state:
+                            await child.turn_on()
+                        else:
+                            await child.turn_off()
+                    else:
+                        await child.turn_on() if not child.is_on else await child.turn_off()
                     await asyncio.sleep(1)
                     await plug.update()
                     for c in plug.children:
@@ -420,7 +445,15 @@ async def _toggle_device_state(credentials, parent_ip, child_id):
                             return c.is_on
                 return None
             else:
-                await plug.toggle()
+                if desired_state is not None:
+                    if desired_state:
+                        await plug.turn_on()
+                    else:
+                        await plug.turn_off()
+                else:
+                    await plug.toggle()
+                await plug.update()
+                return plug.is_on
                 await plug.update()
                 return plug.is_on
         except Exception as e:
@@ -446,7 +479,9 @@ async def toggle_device(device_id):
         return jsonify({'error': 'Device not found'}), 404
 
     credentials = get_account_credentials(account_id) if account_id else None
+    logging.info(f"Toggling device {device_id} ({device['name']})")
     state = await _toggle_device_state(credentials, parent_ip, child_id)
+    logging.info(f"Device {device_id} toggled to {'ON' if state else 'OFF'}")
 
     if state is None:
         return jsonify({'error': 'Failed to toggle device'}), 500
@@ -477,12 +512,21 @@ async def get_device_state(device_id):
 @app.route('/api/racks', methods=['GET'])
 def get_racks():
     conn = get_db()
-    racks = conn.execute('SELECT * FROM racks ORDER BY name').fetchall()
+    racks = conn.execute('SELECT * FROM racks ORDER BY is_default DESC, name').fetchall()
     result = []
     for rack in racks:
         result.append(dict(rack))
     conn.close()
     return jsonify(result)
+
+@app.route('/api/racks/default/<int:rack_id>', methods=['POST'])
+def set_default_rack(rack_id):
+    conn = get_db()
+    conn.execute('UPDATE racks SET is_default = 0')
+    conn.execute('UPDATE racks SET is_default = 1 WHERE id = ?', (rack_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
 
 @app.route('/api/racks', methods=['POST'])
 def create_rack():
@@ -529,14 +573,20 @@ def get_rack_structure(rack_id):
         'reservoirs': [dict(r) for r in reservoirs],
         'components': []
     }
-    component_rows = conn.execute('''
-        SELECT c.*, d.name as device_name, d.ip_address, d.child_id
-        FROM components c
-        LEFT JOIN devices d ON c.device_id = d.id
-        WHERE c.parent_type = 'rack' AND c.parent_id = ?
-    ''', (rack_id,)).fetchall()
-    for comp in component_rows:
-        result['components'].append(dict(comp))
+    shelf_ids = [s['id'] for s in shelves]
+    reservoir_ids = [r['id'] for r in reservoirs]
+    all_ids = shelf_ids + reservoir_ids
+    if all_ids:
+        placeholders = ','.join('?' * len(all_ids))
+        query = f'''
+            SELECT c.*, d.name as device_name, d.ip_address, d.child_id, d.is_on
+            FROM components c
+            LEFT JOIN devices d ON c.device_id = d.id
+            WHERE c.parent_type = 'shelf' AND c.parent_id IN ({placeholders})
+        '''
+        component_rows = conn.execute(query, tuple(all_ids)).fetchall()
+        for comp in component_rows:
+            result['components'].append(dict(comp))
     conn.close()
     return jsonify(result)
 
@@ -695,10 +745,123 @@ def get_sensors():
 def read_sensor(sensor_id):
     return jsonify({'sensor_id': sensor_id, 'value': None, 'error': 'Sensor integration not yet implemented'})
 
+@app.route('/api/schedules', methods=['GET'])
+def get_schedules():
+    conn = get_db()
+    schedules = conn.execute('''
+        SELECT s.*, d.name as device_name, d.ip_address
+        FROM schedules s
+        JOIN devices d ON s.device_id = d.id
+        ORDER BY s.hour, s.minute
+    ''').fetchall()
+    conn.close()
+    return jsonify([dict(s) for s in schedules])
+
+@app.route('/api/schedules', methods=['POST'])
+def create_schedule():
+    data = request.get_json()
+    device_id = data.get('device_id')
+    name = data.get('name')
+    action = data.get('action', 'on')
+    hour = data.get('hour')
+    minute = data.get('minute')
+    days = data.get('days', '0,1,2,3,4,5,6')
+
+    if not all([device_id, name, hour is not None, minute is not None]):
+        return jsonify({'error': 'Missing required fields'}), 400
+
+    conn = get_db()
+    conn.execute('''
+        INSERT INTO schedules (device_id, name, action, hour, minute, days)
+        VALUES (?, ?, ?, ?, ?, ?)
+    ''', (device_id, name, action, hour, minute, days))
+    conn.commit()
+    schedule_id = conn.execute('SELECT last_insert_rowid()').fetchone()[0]
+    conn.close()
+    return jsonify({'id': schedule_id}), 201
+
+@app.route('/api/schedules/<int:schedule_id>', methods=['DELETE'])
+def delete_schedule(schedule_id):
+    conn = get_db()
+    conn.execute('DELETE FROM schedules WHERE id = ?', (schedule_id,))
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+@app.route('/api/schedules/<int:schedule_id>', methods=['PUT'])
+def update_schedule(schedule_id):
+    data = request.get_json()
+    updates = []
+    values = []
+
+    for field in ['name', 'action', 'hour', 'minute', 'days', 'enabled']:
+        if field in data:
+            updates.append(f'{field} = ?')
+            values.append(data[field])
+
+    if not updates:
+        return jsonify({'error': 'No fields to update'}), 400
+
+    values.append(schedule_id)
+    conn = get_db()
+    conn.execute(f'UPDATE schedules SET {", ".join(updates)} WHERE id = ?', values)
+    conn.commit()
+    conn.close()
+    return jsonify({'success': True})
+
+def check_schedules():
+    now = datetime.now()
+    current_day = now.weekday()
+    current_hour = now.hour
+    current_minute = now.minute
+
+    conn = get_db()
+    schedules = conn.execute('''
+        SELECT s.*, d.account_id, d.child_id, d.ip_address
+        FROM schedules s
+        JOIN devices d ON s.device_id = d.id
+        WHERE s.enabled = 1
+    ''').fetchall()
+
+    for schedule in schedules:
+        days = [int(d) for d in schedule['days'].split(',')]
+        if current_day not in days:
+            continue
+        if schedule['hour'] == current_hour and schedule['minute'] == current_minute:
+            action = schedule['action']
+            device_id = schedule['device_id']
+            account_id = schedule['account_id']
+            child_id = schedule['child_id']
+            ip_address = schedule['ip_address']
+
+            credentials = get_account_credentials(account_id) if account_id else None
+
+            try:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                desired_state = action == 'on'
+                current_state = loop.run_until_complete(_get_device_state(credentials, ip_address, child_id))
+
+                if current_state != desired_state:
+                    loop.run_until_complete(_toggle_device_state(credentials, ip_address, child_id, desired_state))
+                    logging.info(f"Schedule {schedule['id']}: Turned device {device_id} {action}")
+                loop.close()
+            except Exception as e:
+                logging.error(f"Schedule {schedule['id']} error: {e}")
+
+    conn.close()
+
+def run_scheduler():
+    scheduler.add_job(func=check_schedules, trigger='cron', second=0)
+    scheduler.start()
+    logging.info("Background scheduler started")
+
 if __name__ == '__main__':
     os.makedirs('/data', exist_ok=True)
     init_db()
+    run_scheduler()
     app.run(host='0.0.0.0', port=9731, debug=False)
 else:
     os.makedirs('/data', exist_ok=True)
     init_db()
+    run_scheduler()

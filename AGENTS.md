@@ -1,11 +1,11 @@
-# EBB Flow Controller
+# FlowBoard
 
 ## Quick Start
 
 ```bash
 docker compose up --build -d   # Build and start
-docker logs ebb-flow-controller # View logs
-docker compose down            # Stop
+docker logs flowboard         # View logs
+docker compose down         # Stop
 ```
 
 ## Key Details
@@ -27,10 +27,10 @@ docker compose down && docker compose up --build -d
 docker compose restart
 
 # View logs
-docker logs ebb-flow-controller
+docker logs flowboard
 
 # View app logs inside container
-docker exec ebb-flow-controller tail -20 /data/app.log
+docker exec flowboard tail -20 /data/app.log
 ```
 
 ## Adding Kasa Devices
