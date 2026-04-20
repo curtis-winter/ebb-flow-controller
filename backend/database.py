@@ -1,17 +1,22 @@
 """
 Database utility module for FlowBoard.
-Provides connection management and helper functions.
+Provides connection management, schema initialization, and migrations.
 """
 import sqlite3
 from contextlib import contextmanager
 
 DB_PATH = '/data/devices.db'
 
-def get_db():
+# Schema version - increment when making schema changes
+SCHEMA_VERSION = 1
+
+
+def get_db() -> sqlite3.Connection:
     """Create a new database connection."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
 
 class Database:
     """Utility class for database operations with context manager support."""
@@ -28,37 +33,104 @@ class Database:
             self.conn.close()
         return False
     
-    def fetch_one(self, query, params=None):
+    def fetch_one(self, query: str, params: tuple = None) -> sqlite3.Row:
         """Fetch a single row."""
         params = params or ()
         return self.conn.execute(query, params).fetchone()
     
-    def fetch_all(self, query, params=None):
+    def fetch_all(self, query: str, params: tuple = None) -> list:
         """Fetch all rows."""
         params = params or ()
         return self.conn.execute(query, params).fetchall()
     
-    def execute(self, query, params=None):
+    def execute(self, query: str, params: tuple = None) -> sqlite3.Cursor:
         """Execute a query."""
         params = params or ()
         return self.conn.execute(query, params)
     
-    def commit(self):
+    def commit(self) -> None:
         """Commit the current transaction."""
         self.conn.commit()
     
     @staticmethod
-    def dict(row):
+    def dict(row: sqlite3.Row) -> dict:
         """Convert a row to a dictionary."""
         return dict(row) if row else None
 
-def db():
+
+def db() -> Database:
     """Convenience function to create a Database instance."""
     return Database()
 
-def init_schema():
-    """Initialize the database schema."""
+
+def column_exists(table: str, column: str) -> bool:
+    """Check if a column exists in a table."""
+    try:
+        with db() as database:
+            result = database.fetch_one(f"PRAGMA table_info({table})")
+            if result:
+                columns = [row['name'] for row in database.fetch_all(f"PRAGMA table_info({table})")]
+                return column in columns
+            return False
+    except Exception:
+        return False
+
+
+def table_exists(table: str) -> bool:
+    """Check if a table exists."""
+    try:
+        with db() as database:
+            result = database.fetch_one(
+                "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+                (table,)
+            )
+            return result is not None
+    except Exception:
+        return False
+
+
+def get_schema_version() -> int:
+    """Get the current schema version from the database."""
+    if not table_exists('schema_version'):
+        return 0
+    
+    try:
+        with db() as database:
+            result = database.fetch_one('SELECT version FROM schema_version ORDER BY version DESC LIMIT 1')
+            return result['version'] if result else 0
+    except Exception:
+        return 0
+
+
+def set_schema_version(version: int) -> None:
+    """Set the schema version in the database."""
     with db() as database:
+        database.execute('INSERT INTO schema_version (version) VALUES (?)', (version,))
+        database.commit()
+
+
+def migrate_schema() -> None:
+    """Run migrations to update the schema."""
+    current_version = get_schema_version()
+    
+    if current_version < 1:
+        migrate_to_v1()
+    
+    # Add future migrations here
+
+
+def migrate_to_v1() -> None:
+    """Initial schema setup."""
+    with db() as database:
+        # Schema version table
+        database.execute('''
+            CREATE TABLE IF NOT EXISTS schema_version (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                version INTEGER NOT NULL,
+                applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
         # Accounts table
         database.execute('''
             CREATE TABLE IF NOT EXISTS accounts (
@@ -83,6 +155,7 @@ def init_schema():
                 child_id TEXT,
                 is_on INTEGER DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                last_updated TEXT,
                 FOREIGN KEY (account_id) REFERENCES accounts(id)
             )
         ''')
@@ -104,38 +177,6 @@ def init_schema():
                 FOREIGN KEY (device_id) REFERENCES devices(id)
             )
         ''')
-        
-        # Add details column if it doesn't exist
-        try:
-            database.execute('ALTER TABLE activity_log ADD COLUMN details TEXT')
-        except:
-            pass
-        
-        # Add rack_name and shelf_name columns if they don't exist
-        try:
-            database.execute('ALTER TABLE activity_log ADD COLUMN rack_name TEXT')
-        except:
-            pass
-        try:
-            database.execute('ALTER TABLE activity_log ADD COLUMN shelf_name TEXT')
-        except:
-            pass
-        
-        # Add device_response and device_status columns if they don't exist
-        try:
-            database.execute('ALTER TABLE activity_log ADD COLUMN device_response TEXT')
-        except:
-            pass
-        try:
-            database.execute('ALTER TABLE activity_log ADD COLUMN device_status TEXT')
-        except:
-            pass
-        
-        # Add trigger_source column if it doesn't exist
-        try:
-            database.execute('ALTER TABLE activity_log ADD COLUMN trigger_source TEXT')
-        except:
-            pass
         
         # Racks table
         database.execute('''
@@ -202,3 +243,37 @@ def init_schema():
         ''')
         
         database.commit()
+        set_schema_version(1)
+    
+    # Run any column additions for existing databases
+    migrate_add_columns()
+
+
+def migrate_add_columns() -> None:
+    """Add columns to existing tables if they don't exist."""
+    add_column_if_not_exists('activity_log', 'details', 'TEXT')
+    add_column_if_not_exists('activity_log', 'rack_name', 'TEXT')
+    add_column_if_not_exists('activity_log', 'shelf_name', 'TEXT')
+    add_column_if_not_exists('activity_log', 'device_response', 'TEXT')
+    add_column_if_not_exists('activity_log', 'device_status', 'TEXT')
+    add_column_if_not_exists('activity_log', 'trigger_source', 'TEXT')
+    add_column_if_not_exists('devices', 'last_updated', 'TEXT')
+
+
+def add_column_if_not_exists(table: str, column: str, column_type: str) -> None:
+    """Add a column to a table if it doesn't exist."""
+    try:
+        with db() as database:
+            database.execute(f'ALTER TABLE {table} ADD COLUMN {column} {column_type}')
+            database.commit()
+    except Exception:
+        pass  # Column likely already exists
+
+
+def init_schema() -> None:
+    """Initialize the database schema."""
+    migrate_schema()
+
+
+# Backwards compatibility
+init_schema = init_schema

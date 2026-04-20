@@ -16,8 +16,10 @@ from zoneinfo import ZoneInfo
 from kasa import Discover, Credentials
 
 from backend.database import db, Database, init_schema, get_db
+from backend.constants import EDMONTON_TZ
 from backend.services.device_service import get_device_state, toggle_device_state, discover_device
 from backend.services.schedule_service import start_scheduler
+from backend.services.activity_log_service import log_toggle, log_refresh
 
 # Initialize Flask app
 app = Flask(__name__, static_folder='../frontend', template_folder='../frontend')
@@ -313,31 +315,37 @@ async def toggle_device(device_id):
     logging.info(f"Device {device_id} toggled to {'ON' if state else 'OFF'} (retries: {retries})")
 
     if state is not None:
-        edmonton_tz = ZoneInfo('America/Edmonton')
-        timestamp = datetime.now(edmonton_tz).strftime('%Y-%m-%d %H:%M:%S')
-        details = f"retries:{retries}" if retries > 0 else "retries:0"
+        timestamp = datetime.now(EDMONTON_TZ).strftime('%Y-%m-%d %H:%M:%S')
         
         with db() as database:
             database.execute(
                 'UPDATE devices SET is_on = ?, last_updated = ? WHERE id = ?',
                 (1 if state else 0, timestamp, device_id)
             )
-            database.execute(
-                'INSERT INTO activity_log (timestamp, device_id, device_name, action_type, details, rack_name, shelf_name, device_response, device_status, trigger_source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                (timestamp, device_id, device_name, 'device_toggle', details, rack_name, shelf_name, 'ON' if state else 'OFF', 'success', 'Manual')
-            )
             database.commit()
+        
+        log_toggle(
+            device_id=device_id,
+            device_name=device_name,
+            device_response='ON' if state else 'OFF',
+            device_status='success',
+            trigger_source='Manual',
+            rack_name=rack_name,
+            shelf_name=shelf_name,
+            retries=retries,
+        )
 
     if state is None:
-        # Log the failure
-        edmonton_tz = ZoneInfo('America/Edmonton')
-        fail_timestamp = datetime.now(edmonton_tz).strftime('%Y-%m-%d %H:%M:%S')
-        with db() as database:
-            database.execute(
-                'INSERT INTO activity_log (timestamp, device_id, device_name, action_type, details, rack_name, shelf_name, device_response, device_status, trigger_source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                (fail_timestamp, device_id, device_name, 'device_toggle', 'retries:0', rack_name, shelf_name, 'N/A', 'failed', 'Manual')
-            )
-            database.commit()
+        log_toggle(
+            device_id=device_id,
+            device_name=device_name,
+            device_response=None,
+            device_status='failed',
+            trigger_source='Manual',
+            rack_name=rack_name,
+            shelf_name=shelf_name,
+            retries=0,
+        )
         return jsonify({'error': 'Failed to toggle device'}), 500
 
     return jsonify({'is_on': state})
@@ -399,8 +407,7 @@ async def refresh_devices():
             
             refresh_status['current'] = device['id']
             
-            edmonton_tz = ZoneInfo('America/Edmonton')
-            timestamp = datetime.now(edmonton_tz).strftime('%Y-%m-%d %H:%M:%S')
+            timestamp = datetime.now(EDMONTON_TZ).strftime('%Y-%m-%d %H:%M:%S')
             
             # Get rack/shelf at log time
             rack_name, shelf_name = get_device_rack_shelf(device['id'])
@@ -409,42 +416,45 @@ async def refresh_devices():
                 creds = get_account_credentials(device['account_id'])
                 state, retries = await get_device_state(creds, device['ip_address'], device['child_id'])
                 
-                details = f"retries:{retries}" if retries > 0 else "retries:0"
-                
                 with db() as database:
                     if state is not None:
                         database.execute('UPDATE devices SET is_on = ?, last_updated = ? WHERE id = ?', (1 if state else 0, timestamp, device['id']))
-                    
-                    device_response = ('ON' if state else 'OFF') if state is not None else 'N/A'
-                    device_status = 'success' if state is not None else 'failed'
-                    
-                    database.execute(
-                        'INSERT INTO activity_log (timestamp, device_id, device_name, action_type, details, rack_name, shelf_name, device_response, device_status, trigger_source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        (timestamp, device['id'], device['name'], 'device_status_refresh', details, rack_name, shelf_name, device_response, device_status, 'Manual')
-                    )
-                    database.commit()
-                    
-                    result = {
-                        'id': device['id'],
-                        'name': device['name'],
-                        'state': state,
-                        'retries': retries,
-                        'success': state is not None,
-                        'timestamp': timestamp
-                    }
-                    refresh_status['results'].append(result)
-                    refresh_status['completed'] = idx + 1
-                    
-                    logging.info(f"Refreshed device {device['id']}: {device['name']} = {'ON' if state else 'OFF'} (retries: {retries})")
+                        database.commit()
+                
+                log_refresh(
+                    device_id=device['id'],
+                    device_name=device['name'],
+                    device_response='ON' if state else ('OFF' if state is not None else None),
+                    device_status='success' if state is not None else 'failed',
+                    rack_name=rack_name,
+                    shelf_name=shelf_name,
+                    retries=retries,
+                )
+                
+                result = {
+                    'id': device['id'],
+                    'name': device['name'],
+                    'state': state,
+                    'retries': retries,
+                    'success': state is not None,
+                    'timestamp': timestamp
+                }
+                refresh_status['results'].append(result)
+                refresh_status['completed'] = idx + 1
+                
+                logging.info(f"Refreshed device {device['id']}: {device['name']} = {'ON' if state else 'OFF'} (retries: {retries})")
                     
             except Exception as e:
                 logging.error(f"Refresh error for device {device['id']}: {e}")
-                with db() as database:
-                    database.execute(
-                        'INSERT INTO activity_log (timestamp, device_id, device_name, action_type, details, rack_name, shelf_name, device_response, device_status, trigger_source) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        (timestamp, device['id'], device['name'], 'device_status_refresh', f"error:{str(e)}", rack_name, shelf_name, 'N/A', 'error', 'Manual')
-                    )
-                    database.commit()
+                log_refresh(
+                    device_id=device['id'],
+                    device_name=device['name'],
+                    device_response=None,
+                    device_status='error',
+                    rack_name=rack_name,
+                    shelf_name=shelf_name,
+                    error=f"error:{str(e)}",
+                )
                 refresh_status['results'].append({
                     'id': device['id'],
                     'name': device['name'],
