@@ -365,49 +365,81 @@
         </div>
     </div>
 
-    <div class="modal-overlay" id="scheduleModal">
-        <div class="modal">
-            <h2>Add Schedule</h2>
-            <div class="modal-row">
-                <label>Device</label>
-                <select class="modal-select" id="scheduleDevice"></select>
-            </div>
-            <div class="modal-row">
-                <label>Schedule Name</label>
-                <input type="text" class="modal-input" id="scheduleName" placeholder="e.g., Morning Lights On">
-            </div>
-            <div class="modal-row">
-                <label>Action</label>
-                <select class="modal-select" id="scheduleAction">
-                    <option value="on">Turn On</option>
-                    <option value="off">Turn Off</option>
-                </select>
-            </div>
-            <div class="modal-row">
-                <label>Time</label>
-                <div style="display: flex; gap: 8px;">
-                    <input type="number" class="modal-input" id="scheduleHour" min="0" max="23" placeholder="Hour (0-23)" style="width: 120px;">
-                    <input type="number" class="modal-input" id="scheduleMinute" min="0" max="59" placeholder="Min (0-59)" style="width: 120px;">
-                </div>
-            </div>
-            <div class="modal-row">
-                <label>Days</label>
-                <div style="display: flex; flex-wrap: wrap; gap: 8px;">
-                    <label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="day0" checked> Sun</label>
-                    <label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="day1" checked> Mon</label>
-                    <label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="day2" checked> Tue</label>
-                    <label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="day3" checked> Wed</label>
-                    <label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="day4" checked> Thu</label>
-                    <label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="day5" checked> Fri</label>
-                    <label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="day6" checked> Sat</label>
-                </div>
-            </div>
-            <div class="modal-actions">
-                <button class="btn-secondary" onclick="hideModals()">Cancel</button>
-                <button class="btn-primary" onclick="createSchedule()">Add</button>
-            </div>
-        </div>
-    </div>
+<div class="modal-overlay" id="scheduleModal">
+<div class="modal" style="max-width: 500px;">
+<h2>Add Schedule</h2>
+<div class="modal-row">
+<label>Schedule Name</label>
+<input type="text" class="modal-input" id="scheduleName" placeholder="e.g., Morning Lights On">
+</div>
+<div class="modal-row">
+<label>Target Type</label>
+<select class="modal-select" id="scheduleTargetType" onchange="updateScheduleTargetOptions()">
+<option value="rack">Entire Rack</option>
+<option value="shelf">Shelf</option>
+<option value="device">Individual Device</option>
+</select>
+</div>
+<div class="modal-row">
+<label>Target</label>
+<select class="modal-select" id="scheduleTarget"></select>
+</div>
+<div class="modal-row">
+<label>Schedule Type</label>
+<select class="modal-select" id="scheduleType" onchange="updateScheduleTypeOptions()">
+<option value="on">Turn On at time</option>
+<option value="off">Turn Off at time</option>
+<option value="on_then_off">Turn On, then Off after duration</option>
+<option value="cycle">Cycle On/Off continuously</option>
+</select>
+</div>
+<div class="modal-row">
+<label>Start Time</label>
+<div style="display: flex; gap: 8px;">
+<input type="number" class="modal-input" id="scheduleHour" min="0" max="23" placeholder="Hour" style="width: 80px;">
+<input type="number" class="modal-input" id="scheduleMinute" min="0" max="59" placeholder="Min" style="width: 80px;">
+</div>
+</div>
+<div class="modal-row" id="durationRow" style="display: none;">
+<label>Duration (on_then_off)</label>
+<div style="display: flex; gap: 8px; align-items: center;">
+<input type="number" class="modal-input" id="scheduleDurationHours" min="0" placeholder="Hrs" style="width: 60px;">
+<input type="number" class="modal-input" id="scheduleDurationMins" min="0" max="59" placeholder="Mins" style="width: 60px;">
+<input type="number" class="modal-input" id="scheduleDurationSecs" min="0" max="59" placeholder="Secs" style="width: 60px;">
+</div>
+</div>
+<div class="modal-row" id="cycleRow" style="display: none;">
+<label>Cycle Intervals</label>
+<div style="display: flex; gap: 8px; align-items: center;">
+<span>On:</span>
+<input type="number" class="modal-input" id="scheduleOnDurationMins" min="1" placeholder="Mins" style="width: 60px;">
+<span>Off:</span>
+<input type="number" class="modal-input" id="scheduleOffDurationMins" min="1" placeholder="Mins" style="width: 60px;">
+</div>
+</div>
+<div class="modal-row">
+<label>Days</label>
+<div style="display: flex; flex-wrap: wrap; gap: 8px;">
+<label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="day0" checked> Sun</label>
+<label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="day1" checked> Mon</label>
+<label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="day2" checked> Tue</label>
+<label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="day3" checked> Wed</label>
+<label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="day4" checked> Thu</label>
+<label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="day5" checked> Fri</label>
+<label style="display: flex; align-items: center; gap: 4px;"><input type="checkbox" id="day6" checked> Sat</label>
+</div>
+</div>
+<div class="modal-row">
+<label style="display: flex; align-items: center; gap: 8px;">
+<input type="checkbox" id="scheduleEnabled" checked> Enabled
+</label>
+</div>
+<div class="modal-actions">
+<button class="btn-secondary" onclick="hideModals()">Cancel</button>
+<button class="btn-primary" onclick="createSchedule()">Add Schedule</button>
+</div>
+</div>
+</div>
 
     <script>
         let devices = [];
@@ -449,82 +481,145 @@
             if (tabId === 'logs') { loadLogs(); }
         }
 
-        function showScheduleModal() {
-            populateScheduleDevices();
-            document.getElementById('scheduleModal').classList.add('active');
-            document.getElementById('scheduleName').focus();
-        }
+function showScheduleModal() {
+updateScheduleTargetOptions();
+document.getElementById('scheduleModal').classList.add('active');
+document.getElementById('scheduleName').focus();
+}
 
-        async function populateScheduleDevices() {
-            const select = document.getElementById('scheduleDevice');
-            select.innerHTML = devices.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
-        }
+async function updateScheduleTargetOptions() {
+const targetType = document.getElementById('scheduleTargetType').value;
+const select = document.getElementById('scheduleTarget');
+let options = '';
 
-        async function loadSchedules() {
-            const res = await fetch('/api/schedules');
-            schedules = await res.json();
-            renderSchedules();
-        }
+if (targetType === 'rack') {
+options = racks.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+} else if (targetType === 'shelf') {
+const shelves = [];
+racks.forEach(rack => {
+if (rack.shelves) {
+rack.shelves.forEach(shelf => {
+shelves.push({id: shelf.id, name: `${rack.name} - ${shelf.name}`});
+});
+}
+});
+options = shelves.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+} else if (targetType === 'device') {
+options = devices.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+}
 
-        function renderSchedules() {
-            const list = document.getElementById('schedulesList');
-            if (schedules.length === 0) {
-                list.innerHTML = '<div class="empty-state"><h2>No schedules</h2><p>Create a schedule to automate device control</p></div>';
-                return;
-            }
-            const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-            list.innerHTML = schedules.map(s => `
-                <div class="schedule-card">
-                    <div class="schedule-info">
-                        <div class="schedule-name">${s.name}</div>
-                        <div class="schedule-details">
-                            <span class="schedule-device">${s.device_name}</span>
-                            <span class="schedule-action ${s.action}">${s.action === 'on' ? '💡 On' : '⭕ Off'}</span>
-                            <span class="schedule-time">${String(s.hour).padStart(2, '0')}:${String(s.minute).padStart(2, '0')}</span>
-                            <span class="schedule-days">${s.days.split(',').map(d => dayNames[parseInt(d)]).join(', ')}</span>
-                        </div>
-                    </div>
-                    <div class="schedule-actions">
-                        <label class="schedule-toggle">
-                            <input type="checkbox" ${s.enabled ? 'checked' : ''} onchange="toggleSchedule(${s.id}, this.checked)">
-                            <span>${s.enabled ? 'Enabled' : 'Disabled'}</span>
-                        </label>
-                        <button class="btn-delete" onclick="deleteSchedule(${s.id})">🗑</button>
-                    </div>
-                </div>
-            `).join('');
-        }
+select.innerHTML = options || '<option value="">No options available</option>';
+updateScheduleTypeOptions();
+}
 
-        async function createSchedule() {
-            const device_id = document.getElementById('scheduleDevice').value;
-            const name = document.getElementById('scheduleName').value.trim();
-            const action = document.getElementById('scheduleAction').value;
-            const hour = parseInt(document.getElementById('scheduleHour').value);
-            const minute = parseInt(document.getElementById('scheduleMinute').value);
+function updateScheduleTypeOptions() {
+const scheduleType = document.getElementById('scheduleType').value;
+document.getElementById('durationRow').style.display = (scheduleType === 'on_then_off') ? 'flex' : 'none';
+document.getElementById('cycleRow').style.display = (scheduleType === 'cycle') ? 'flex' : 'none';
+}
 
-            if (!name) { showAlert('Name required'); return; }
-            if (isNaN(hour) || hour < 0 || hour > 23) { showAlert('Valid hour (0-23) required'); return; }
-            if (isNaN(minute) || minute < 0 || minute > 59) { showAlert('Valid minute (0-59) required'); return; }
+async function loadSchedules() {
+const res = await fetch('/api/schedules');
+schedules = await res.json();
+renderSchedules();
+}
 
-            const days = [];
-            for (let i = 0; i <= 6; i++) {
-                if (document.getElementById('day' + i).checked) days.push(i);
-            }
-            if (days.length === 0) { showAlert('Select at least one day'); return; }
+function renderSchedules() {
+const list = document.getElementById('schedulesList');
+if (schedules.length === 0) {
+list.innerHTML = '<div class="empty-state"><h2>No schedules</h2><p>Create a schedule to automate your grow system</p></div>';
+return;
+}
+const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const typeLabels = {
+'on': '💡 Turn On',
+'off': '⭕ Turn Off',
+'on_then_off': '⏱ On → Off',
+'cycle': '🔄 Cycle'
+};
+list.innerHTML = schedules.map(s => `
+<div class="schedule-card">
+<div class="schedule-info">
+<div class="schedule-name">${s.name}</div>
+<div class="schedule-details">
+<span class="schedule-device">${s.target_type === 'rack' ? '🏭' : s.target_type === 'shelf' ? '📦' : '🔌'} ${s.target_name || 'Unknown'}</span>
+<span class="schedule-action ${s.schedule_type}">${typeLabels[s.schedule_type] || s.schedule_type}</span>
+<span class="schedule-time">${String(s.start_hour).padStart(2, '0')}:${String(s.start_minute).padStart(2, '0')}</span>
+<span class="schedule-days">${s.days.split(',').map(d => dayNames[parseInt(d)]).join(', ')}</span>
+</div>
+</div>
+<div class="schedule-actions">
+<label class="schedule-toggle">
+<input type="checkbox" ${s.enabled ? 'checked' : ''} onchange="toggleSchedule(${s.id}, this.checked)">
+<span>${s.enabled ? 'Enabled' : 'Disabled'}</span>
+</label>
+<button class="btn-delete" onclick="deleteSchedule(${s.id})">🗑</button>
+</div>
+</div>
+`).join('');
+}
 
-            const res = await fetch('/api/schedules', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ device_id: parseInt(device_id), name, action, hour, minute, days: days.join(',') })
-            });
+async function createSchedule() {
+const name = document.getElementById('scheduleName').value.trim();
+const target_type = document.getElementById('scheduleTargetType').value;
+const target_id = parseInt(document.getElementById('scheduleTarget').value);
+const schedule_type = document.getElementById('scheduleType').value;
+const start_hour = parseInt(document.getElementById('scheduleHour').value);
+const start_minute = parseInt(document.getElementById('scheduleMinute').value);
 
-            if (res.ok) {
-                hideModals();
-                document.getElementById('scheduleName').value = '';
-                document.getElementById('scheduleHour').value = '';
-                document.getElementById('scheduleMinute').value = '';
-                loadSchedules();
-                showAlert('Schedule created', false);
+if (!name) { showAlert('Schedule name required'); return; }
+if (!target_id) { showAlert('Please select a target'); return; }
+if (isNaN(start_hour) || start_hour < 0 || start_hour > 23) { showAlert('Valid hour (0-23) required'); return; }
+if (isNaN(start_minute) || start_minute < 0 || start_minute > 59) { showAlert('Valid minute (0-59) required'); return; }
+
+const days = [];
+for (let i = 0; i <= 6; i++) {
+if (document.getElementById('day' + i).checked) days.push(i);
+}
+if (days.length === 0) { showAlert('Select at least one day'); return; }
+
+let duration_seconds = 0;
+let off_duration_seconds = 0;
+
+if (schedule_type === 'on_then_off') {
+const hrs = parseInt(document.getElementById('scheduleDurationHours').value) || 0;
+const mins = parseInt(document.getElementById('scheduleDurationMins').value) || 0;
+const secs = parseInt(document.getElementById('scheduleDurationSecs').value) || 0;
+duration_seconds = (hrs * 3600) + (mins * 60) + secs;
+if (duration_seconds === 0) { showAlert('Set a duration for on_then_off'); return; }
+} else if (schedule_type === 'cycle') {
+const onMins = parseInt(document.getElementById('scheduleOnDurationMins').value) || 1;
+const offMins = parseInt(document.getElementById('scheduleOffDurationMins').value) || 1;
+duration_seconds = onMins * 60;
+off_duration_seconds = offMins * 60;
+}
+
+const enabled = document.getElementById('scheduleEnabled').checked ? 1 : 0;
+
+const res = await fetch('/api/schedules', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({
+name,
+target_type,
+target_id,
+schedule_type,
+start_hour,
+start_minute,
+duration_seconds,
+off_duration_seconds,
+days: days.join(','),
+enabled
+})
+});
+
+if (res.ok) {
+hideModals();
+document.getElementById('scheduleName').value = '';
+document.getElementById('scheduleHour').value = '';
+document.getElementById('scheduleMinute').value = '';
+loadSchedules();
+showAlert('Schedule created', false);
             } else {
                 const data = await res.json();
                 showAlert(data.error || 'Failed to create schedule');

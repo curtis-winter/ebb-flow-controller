@@ -266,6 +266,63 @@ def migrate_add_columns() -> None:
     add_column_if_not_exists('activity_log', 'device_status', 'TEXT')
     add_column_if_not_exists('activity_log', 'trigger_source', 'TEXT')
     add_column_if_not_exists('devices', 'last_updated', 'TEXT')
+    migrate_schedules_schema()
+
+
+def migrate_schedules_schema() -> None:
+    """Migrate schedules table to new schema while preserving data."""
+    try:
+        with db() as database:
+            result = database.fetch_one("PRAGMA table_info(schedules)")
+            if not result:
+                return
+                
+            columns = [row['name'] for row in database.fetch_all("PRAGMA table_info(schedules)")]
+            
+            if 'target_type' not in columns:
+                # Backup old table
+                database.execute('ALTER TABLE schedules RENAME TO schedules_old')
+                
+                # Create new table
+                database.execute('''
+                    CREATE TABLE schedules (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT NOT NULL,
+                        target_type TEXT NOT NULL,
+                        target_id INTEGER NOT NULL,
+                        schedule_type TEXT NOT NULL,
+                        start_hour INTEGER NOT NULL,
+                        start_minute INTEGER NOT NULL,
+                        duration_seconds INTEGER DEFAULT 0,
+                        off_duration_seconds INTEGER DEFAULT 0,
+                        days TEXT NOT NULL DEFAULT '0,1,2,3,4,5,6',
+                        enabled INTEGER DEFAULT 1,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                ''')
+                
+                # Migrate old data
+                old_schedules = database.fetch_all('SELECT * FROM schedules_old')
+                action_map = {'on': 'on', 'off': 'off'}
+                for old in old_schedules:
+                    database.execute('''
+                        INSERT INTO schedules (name, target_type, target_id, schedule_type, start_hour, start_minute, days, enabled)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    ''', (
+                        old['name'],
+                        'device',
+                        old['device_id'],
+                        action_map.get(old['action'], 'on'),
+                        old['hour'],
+                        old['minute'],
+                        old['days'],
+                        old['enabled']
+                    ))
+                
+                database.execute('DROP TABLE schedules_old')
+                print("Migrated schedules to new schema")
+    except Exception as e:
+        print(f"Schedule migration: {e}")
 
 
 def add_column_if_not_exists(table: str, column: str, column_type: str) -> None:
