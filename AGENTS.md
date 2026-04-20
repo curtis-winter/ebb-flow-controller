@@ -3,19 +3,20 @@
 ## Quick Start
 
 ```bash
-docker compose up --build -d   # Build and start
-docker logs flowboard         # View logs
-docker compose down         # Stop
+docker compose up --build -d # Build and start
+docker logs flowboard # View logs
+docker compose down # Stop
 ```
 
 ## Key Details
 
 - **Port**: 9731
-- **Network**: Uses `network_mode: host` for Kasa device discovery
+- **Network**: Uses `network_mode: host` for Kasa device discovery (UDP broadcast required)
 - **Data**: `./data/` persists across restarts/rebuilds
   - `devices.db` - SQLite database
   - `encryption.key` - Fernet encryption key
-- **Stack**: Flask + python-kasa (v0.10.2)
+- **Stack**: Flask + python-kasa + APScheduler
+- **Timezone**: Configurable via `TZ` environment variable (default: America/Edmonton)
 
 ## Developer Commands
 
@@ -31,14 +32,17 @@ docker logs flowboard
 
 # View app logs inside container
 docker exec flowboard tail -20 /data/app.log
+
+# Clear database and start fresh (WARNING: loses all data)
+rm data/devices.db && docker compose up --build -d
 ```
 
 ## Adding Kasa Devices
 
 1. Click **"+ Account"** to add your Kasa credentials (email + password)
 2. Select the account from the dropdown
-3. Click **"Scan"** to discover devices on your network
-4. Or click **"Add Device"** to add by IP address
+3. Click **"Scan"** to discover devices on your network (uses UDP broadcast)
+4. Or click **"Add Device"** to add by IP address manually
 5. Toggle devices on/off from the UI
 
 ## Features
@@ -47,42 +51,104 @@ docker exec flowboard tail -20 /data/app.log
 - HS300 (6-plug strips) shown as separate devices
 - Credentials encrypted with Fernet (AES-128)
 - Background scheduler for automated device control
-- Event logging for external state changes
+- Event logging for all device state changes
+- Sequential device refresh with real-time progress
+- Activity log with filtering/sorting
 
-## Known Issues
+## Scheduler
 
-- Always install `tzdata` to prevent timezone errors
+### New Design (v2)
+
+The scheduler was redesigned to support rack/shelf/device level scheduling:
+
+- **Target Types**: `rack`, `shelf`, `device`
+- **Schedule Types**:
+  - `on` - Turn on at specific time
+  - `off` - Turn off at specific time  
+  - `on_then_off` - Turn on, then off after duration (H:M:S)
+  - `cycle` - Cycle on/off continuously (placeholder)
+
+### API Endpoints
+
+```
+GET    /api/schedules              - List all schedules
+POST   /api/schedules              - Create new schedule
+PUT    /api/schedules/<id>         - Update schedule
+DELETE /api/schedules/<id>         - Delete schedule
+```
+
+### Schedule Payload
+
+```json
+{
+  "name": "Morning Lights",
+  "target_type": "shelf",
+  "target_id": 1,
+  "schedule_type": "on",
+  "start_hour": 6,
+  "start_minute": 0,
+  "duration_seconds": 0,
+  "off_duration_seconds": 0,
+  "days": "0,1,2,3,4,5,6",
+  "enabled": 1
+}
+```
 
 ## Device Communication (Important)
 
 ### Discovery Method
 
-After testing, we found that **KLAP V2 does NOT work** with your devices, but **port 9999 discovery works**:
+**UDP broadcast discovery** is used (port 9999). This requires `network_mode: host` in Docker.
 
 - ❌ KLAP V2: `Device response did not match our challenge` - authentication fails
-- ✅ Port 9999: Works correctly
+- ✅ UDP Broadcast (port 9999): Works correctly
 
-The device service uses port 9999 discovery exclusively:
+Key finding: Devices can be discovered without credentials (UDP broadcast), but control requires credentials with port 9999.
 
 ```python
-# In backend/services/device_service.py
-async def _get_plug(credentials, parent_ip):
-    plug = await Discover.discover_single(parent_ip, credentials=credentials, port=9999)
-    await plug.update()
-    return plug
+# Discovery without credentials (works via UDP broadcast)
+disc = Discover()
+found = await disc.discover()
+
+# Control with credentials and port 9999
+plug = await Discover.discover_single(ip, credentials=credentials, port=9999)
 ```
 
 ### Performance
 
 - **Toggle latency**: ~3-4 seconds per toggle operation
+- **Device refresh**: Sequential with 2-second delays between devices
+- **Retry logic**: 4 retries with 1s, 2s, 5s delays
 - This is **normal** - it's the network latency to communicate with Kasa devices
-- There's no way to make it faster since it's a limitation of the device itself
 
-### Why Not KLAP V2?
+## Configuration
 
-Your HS300 (hardware version 1.0) and python-kasa v0.10.2 have incompatibility issues with KLAP V2 authentication. The error message is:
+### Timezone
+
+Set via environment variable in docker-compose.yml:
+```yaml
+environment:
+  - TZ=America/Edmonton
 ```
-Device response did not match our challenge on ip X.X.X.X, check that your e-mail and password (both case-sensitive) are correct.
+
+### Retry Configuration
+
+Defined in `backend/constants.py`:
+```python
+MAX_RETRIES = 4
+RETRY_DELAYS = [1.0, 2.0, 5.0]  # seconds
 ```
 
-This happens even with correct credentials because the authentication protocol differs between versions.
+## Database Migrations
+
+The system includes automatic migrations that run on startup. To force a fresh database:
+```bash
+rm data/devices.db
+docker compose up --build -d
+```
+
+## Known Issues
+
+- Always install `tzdata` to prevent timezone errors
+- HS300 (hardware version 1.0) with python-kasa v0.10.2 has KLAP V2 incompatibility - use port 9999
+- Device discovery without credentials uses UDP broadcast which requires host network mode

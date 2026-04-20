@@ -1,7 +1,7 @@
 # Smart Outlet Controller - Specification
 
 ## Project Overview
-- **Project Name**: EBB Flow Controller
+- **Project Name**: EBB Flow Controller (FlowBoard)
 - **Type**: Web Application (Docker deployed)
 - **Core Functionality**: Manage multiple Kasa brand WiFi smart outlets through a web interface
 - **Target Users**: Home users managing smart home devices
@@ -9,34 +9,66 @@
 ## Architecture
 
 ### Technology Stack
-- **Backend**: Python Flask + Kasa library
+- **Backend**: Python Flask + python-kasa + APScheduler
 - **Frontend**: Single-page HTML/JS with vanilla JS
 - **Database**: SQLite (for device persistence)
-- **Deployment**: Docker Compose
+- **Deployment**: Docker Compose (network_mode: host)
 
 ### Components
 1. **Backend API** (Flask): REST API to discover and control Kasa devices
 2. **Frontend**: Web dashboard to view and control outlets
-3. **Database**: Stores device configurations
+3. **Database**: Stores device configurations, schedules, and activity logs
+4. **Scheduler**: Background APScheduler for automated device control
+
+### File Structure
+```
+backend/
+├── app.py                    # Flask routes and main application
+├── constants.py              # Application constants (timezone, retries)
+├── database.py               # Database utilities, schema, migrations
+└── services/
+    ├── __init__.py
+    ├── device_service.py     # Kasa device control logic with retry
+    ├── schedule_service.py   # APScheduler integration
+    ├── activity_log_service.py  # Activity logging
+    └── retry.py              # Retry decorator utilities
+```
 
 ## Functionality Specification
 
 ### Core Features
 
 #### Device Discovery
-- Scan network for Kasa smart outlets using UDP broadcast
+- Scan network for Kasa smart outlets using UDP broadcast (port 9999)
 - Add devices manually by IP address
 - Store discovered devices in database
+- HS300 power strips shown as separate child devices
 
 #### Device Control
 - Toggle outlet on/off
 - View current on/off state
 - View device info (name, IP, model, MAC)
+- Sequential refresh with real-time progress
 
-#### Device Management
-- Edit device friendly names
-- Remove devices from control
-- Refresh device status
+#### Scheduler (v2)
+New design supporting rack/shelf/device levels:
+- **Target Types**: `rack`, `shelf`, `device`
+- **Schedule Types**:
+  - `on` - Turn on at specific time
+  - `off` - Turn off at specific time  
+  - `on_then_off` - Turn on, then off after duration (H:M:S)
+  - `cycle` - Cycle on/off continuously
+
+#### Activity Logging
+All device operations logged with:
+- Timestamp
+- Device name
+- Action type (toggle, refresh)
+- Rack/Shelf (captured at log time)
+- Device response (ON/OFF/N/A)
+- Status (success/failed/error)
+- Trigger source (Manual/Scheduled)
+- Details (retry count)
 
 ### API Endpoints
 
@@ -49,32 +81,84 @@
 | POST | `/api/devices/<id>/toggle` | Toggle device on/off |
 | GET | `/api/devices/<id>/state` | Get current device state |
 | PUT | `/api/devices/<id>` | Update device name |
+| GET | `/api/devices/refresh` | Trigger device refresh |
+| GET | `/api/devices/refresh/status` | Get refresh progress |
+| GET | `/api/schedules` | List all schedules |
+| POST | `/api/schedules` | Create new schedule |
+| PUT | `/api/schedules/<id>` | Update schedule |
+| DELETE | `/api/schedules/<id>` | Delete schedule |
+| GET | `/api/logs` | Get activity logs |
 
-### Data Model
+### Data Models
 
 #### Device
 ```
 - id: INTEGER PRIMARY KEY
-- name: VARCHAR (friendly name)
-- ip_address: VARCHAR (device IP)
-- mac_address: VARCHAR (device MAC)
-- model: VARCHAR (device model)
+- account_id: INTEGER (foreign key)
+- name: VARCHAR
+- ip_address: VARCHAR
+- mac_address: VARCHAR
+- model: VARCHAR
+- child_id: VARCHAR (for HS300 children)
+- is_on: INTEGER (0/1)
+- last_updated: TIMESTAMP
 - created_at: TIMESTAMP
+```
+
+#### Schedule
+```
+- id: INTEGER PRIMARY KEY
+- name: VARCHAR
+- target_type: VARCHAR (rack/shelf/device)
+- target_id: INTEGER
+- schedule_type: VARCHAR (on/off/on_then_off/cycle)
+- start_hour: INTEGER
+- start_minute: INTEGER
+- duration_seconds: INTEGER
+- off_duration_seconds: INTEGER
+- days: VARCHAR (comma-separated)
+- enabled: INTEGER (0/1)
+- created_at: TIMESTAMP
+```
+
+#### Activity Log
+```
+- id: INTEGER PRIMARY KEY
+- device_id: INTEGER
+- device_name: VARCHAR
+- action_type: VARCHAR
+- details: TEXT
+- rack_name: TEXT
+- shelf_name: TEXT
+- device_response: TEXT
+- device_status: TEXT
+- trigger_source: TEXT
+- timestamp: TIMESTAMP
+```
+
+## Configuration
+
+### Timezone
+Set via `TZ` environment variable in docker-compose.yml:
+- Default: `America/Edmonton`
+
+### Retry Configuration
+In `backend/constants.py`:
+```python
+MAX_RETRIES = 4
+RETRY_DELAYS = [1.0, 2.0, 5.0]  # seconds
 ```
 
 ## UI/UX Specification
 
 ### Layout Structure
-- Single page dashboard
-- Header with app title
-- Grid of device cards
-- "Discover Devices" button in header
-- "Add Device" form (modal)
-
-### Responsive Breakpoints
-- Mobile: < 640px (1 column)
-- Tablet: 640px - 1024px (2 columns)
-- Desktop: > 1024px (3 columns)
+- Single page dashboard with tabs
+- Header with app title and action buttons
+- Tab-based navigation:
+  - Smart Devices (device management)
+  - Grow Layout Configuration (rack/shelf builder)
+  - Grow Schedule Configuration (schedules)
+  - Log History (activity logs)
 
 ### Visual Design
 
@@ -93,105 +177,36 @@
 - Font Family: "Outfit", sans-serif (Google Fonts)
 - Headings: 600 weight
 - Body: 400 weight
-- App Title: 24px
-- Card Title: 18px
-- Card Body: 14px
-
-#### Spacing
-- Card padding: 20px
-- Card gap: 20px
-- Container padding: 24px
-
-#### Visual Effects
-- Cards: subtle box-shadow, 8px border-radius
-- Buttons: 6px border-radius, transition on hover
-- Toggle: smooth 0.2s transition
-- Card hover: slight scale transform (1.02)
 
 ### Components
 
 #### Device Card
-- Device icon (plug emoji or SVG)
-- Device name (editable display)
-- Current state indicator (green/red badge)
+- Device name
+- Current state indicator (timestamp or refresh icon)
 - IP address display
-- Toggle button
-- Delete button (icon)
+- Toggle button (Turn On/Turn Off)
+- Delete button
 
-#### Header
-- App title "EBB Flow Controller"
-- "Discover Devices" button
-- "Add Device" button
+#### Schedule Card
+- Schedule name
+- Target (rack/shelf/device)
+- Schedule type
+- Time
+- Days
+- Enable/disable toggle
+- Delete button
 
-#### Add Device Modal
-- IP address input field
-- "Add" and "Cancel" buttons
-- Overlay backdrop
+#### Activity Log Table
+- Frozen header
+- Zebra striping
+- Filtering (text search + column filter)
+- Sorting (click column headers)
 
-#### Discover Modal
-- Loading spinner during discovery
-- List of found devices with checkboxes
-- "Add Selected" button
-
-## Acceptance Criteria
-
-1. Docker Compose successfully starts backend and serves frontend
-2. Can discover Kasa devices on local network
-3. Can add device by IP address
-4. Can toggle device on/off from web interface
-5. Device state updates reflect actual device state
-6. Devices persist across container restarts
-7. UI is responsive on mobile and desktop
-8. Visual design matches color palette specification
-
-## Architecture (Refactored)
-
-### File Structure
-
-```
-backend/
-├── app.py              # Flask routes and main application
-├── database.py         # Database utilities and schema
-└── services/
-    ├── __init__.py
-    ├── device_service.py   # Kasa device control logic
-    └── schedule_service.py # APScheduler integration
-```
-
-### Database Utility
-
-The `Database` class provides context manager support for cleaner resource handling:
-
-```python
-from backend.database import db
-
-# Usage:
-with db() as database:
-    devices = database.fetch_all('SELECT * FROM devices')
-    database.execute('INSERT INTO ...')
-    database.commit()
-
-# Convert row to dict:
-Database.dict(row)
-```
-
-### Device Service
-
-The device service handles all Kasa device communication using port 9999 discovery:
-
-```python
-from backend.services.device_service import get_device_state, toggle_device_state
-
-# Get state
-state = await get_device_state(credentials, ip_address, child_id)
-
-# Toggle
-new_state = await toggle_device_state(credentials, ip_address, child_id, desired_state=None)
-```
-
-### Key Implementation Notes
+## Key Implementation Notes
 
 1. **Port 9999 Discovery**: KLAP V2 fails with HS300 (v1.0), so port 9999 is used exclusively
 2. **Toggle Latency**: ~3-4 seconds is normal network latency
 3. **Credentials**: Stored encrypted in database using Fernet (AES-128)
-4. **Timezone**: All timestamps displayed in America/Edmonton (MST/MDT)
+4. **Timezone**: All timestamps in configurable timezone (default: America/Edmonton)
+5. **Network Mode**: Uses `host` mode for UDP broadcast discovery
+6. **Retry Logic**: 4 retries with 1s, 2s, 5s delays for device communication
