@@ -805,35 +805,78 @@ def update_component(component_id):
 
 @app.route('/api/schedules', methods=['GET'])
 def get_schedules():
-    """Get all schedules."""
+    """Get all schedules with target info."""
+    target_type = request.args.get('target_type')
+    target_id = request.args.get('target_id', type=int)
+    
     with db() as database:
-        schedules = database.fetch_all('''
-            SELECT s.*, d.name as device_name, d.ip_address
-            FROM schedules s
-            JOIN devices d ON s.device_id = d.id
-            ORDER BY s.hour, s.minute
-        ''')
-    return jsonify([Database.dict(s) for s in schedules])
+        query = 'SELECT s.* FROM schedules s WHERE 1=1'
+        params = []
+        
+        if target_type:
+            query += ' AND s.target_type = ?'
+            params.append(target_type)
+        if target_id:
+            query += ' AND s.target_id = ?'
+            params.append(target_id)
+        
+        query += ' ORDER BY s.start_hour, s.start_minute'
+        
+        schedules = database.fetch_all(query, params)
+    
+    result = []
+    for s in schedules:
+        sched = Database.dict(s)
+        # Add target name based on type
+        if sched['target_type'] == 'rack':
+            with db() as database:
+                rack = database.fetch_one('SELECT name FROM racks WHERE id = ?', (sched['target_id'],))
+                if rack:
+                    sched['target_name'] = rack['name']
+        elif sched['target_type'] == 'shelf':
+            with db() as database:
+                shelf = database.fetch_one('SELECT name, rack_id FROM shelves WHERE id = ?', (sched['target_id'],))
+                if shelf:
+                    sched['target_name'] = shelf['name']
+                    rack = database.fetch_one('SELECT name FROM racks WHERE id = ?', (shelf['rack_id'],))
+                    sched['rack_name'] = rack['name'] if rack else ''
+        elif sched['target_type'] == 'device':
+            with db() as database:
+                dev = database.fetch_one('SELECT name FROM devices WHERE id = ?', (sched['target_id'],))
+                if dev:
+                    sched['target_name'] = dev['name']
+        result.append(sched)
+    
+    return jsonify(result)
 
 @app.route('/api/schedules', methods=['POST'])
 def create_schedule():
     """Create a new schedule."""
     data = request.get_json()
-    device_id = data.get('device_id')
     name = data.get('name')
-    action = data.get('action', 'on')
-    hour = data.get('hour')
-    minute = data.get('minute')
+    target_type = data.get('target_type')  # 'rack', 'shelf', or 'device'
+    target_id = data.get('target_id')
+    schedule_type = data.get('schedule_type')  # 'on', 'off', 'on_then_off', 'cycle'
+    start_hour = data.get('start_hour')
+    start_minute = data.get('start_minute')
+    duration_seconds = data.get('duration_seconds', 0)
+    off_duration_seconds = data.get('off_duration_seconds', 0)
     days = data.get('days', '0,1,2,3,4,5,6')
 
-    if not all([device_id, name, hour is not None, minute is not None]):
+    if not all([name, target_type, target_id, schedule_type, start_hour is not None, start_minute is not None]):
         return jsonify({'error': 'Missing required fields'}), 400
+
+    valid_types = ['rack', 'shelf', 'device']
+    valid_schedule_types = ['on', 'off', 'on_then_off', 'cycle']
+    
+    if target_type not in valid_types or schedule_type not in valid_schedule_types:
+        return jsonify({'error': 'Invalid target_type or schedule_type'}), 400
 
     with db() as database:
         database.execute('''
-            INSERT INTO schedules (device_id, name, action, hour, minute, days)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ''', (device_id, name, action, hour, minute, days))
+            INSERT INTO schedules (name, target_type, target_id, schedule_type, start_hour, start_minute, duration_seconds, off_duration_seconds, days)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (name, target_type, target_id, schedule_type, start_hour, start_minute, duration_seconds, off_duration_seconds, days))
         database.commit()
         schedule_id = database.fetch_one('SELECT last_insert_rowid()')[0]
     
@@ -854,8 +897,8 @@ def update_schedule(schedule_id):
     updates = []
     values = []
 
-    for field in ['name', 'action', 'hour', 'minute', 'days', 'enabled']:
-        if field in data:
+    for field in ['name', 'target_type', 'target_id', 'schedule_type', 'start_hour', 'start_minute', 'duration_seconds', 'off_duration_seconds', 'days', 'enabled']:
+        if field in data and data[field] is not None:
             updates.append(f'{field} = ?')
             values.append(data[field])
 

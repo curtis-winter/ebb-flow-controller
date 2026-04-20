@@ -226,21 +226,29 @@ def migrate_to_v1() -> None:
             )
         ''')
         
-        # Schedules table
+        # Schedules table - new design for rack/shelf/device levels
         database.execute('''
             CREATE TABLE IF NOT EXISTS schedules (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                device_id INTEGER NOT NULL,
                 name TEXT NOT NULL,
-                action TEXT NOT NULL DEFAULT 'on',
-                hour INTEGER NOT NULL,
-                minute INTEGER NOT NULL,
+                target_type TEXT NOT NULL,
+                target_id INTEGER NOT NULL,
+                schedule_type TEXT NOT NULL,
+                start_hour INTEGER NOT NULL,
+                start_minute INTEGER NOT NULL,
+                duration_seconds INTEGER DEFAULT 0,
+                off_duration_seconds INTEGER DEFAULT 0,
                 days TEXT NOT NULL DEFAULT '0,1,2,3,4,5,6',
                 enabled INTEGER DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (device_id) REFERENCES devices(id) ON DELETE CASCADE
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         ''')
+        
+        # Schedule typesenum:
+        # - on: Turn on at specific time
+        # - off: Turn off at specific time
+        # - on_then_off: Turn on at time, turn off after duration
+        # - cycle: Cycle on/off with intervals
         
         database.commit()
         set_schema_version(1)
