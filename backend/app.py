@@ -191,11 +191,17 @@ def get_devices():
 async def discover_devices():
     """Discover devices on the network."""
     account_id = request.json.get('account_id') if request.is_json else None
-    credentials = get_account_credentials(account_id) if account_id else None
     
+    # Discovery doesn't need credentials - just find devices on network
+    # Then when adding/controlling, we use credentials with port 9999
     disc = Discover()
-    found_devices = await disc.discover()
     
+    try:
+        found_devices = await disc.discover(timeout=10)
+    except Exception as e:
+        logging.error(f"Discovery error: {e}")
+        found_devices = {}
+
     results = []
     for ip, plug in found_devices.items():
         try:
@@ -206,9 +212,10 @@ async def discover_devices():
                 'alias': plug.alias,
                 'mac': plug.mac
             })
+            logging.info(f"Discovered {plug.alias} at {ip}")
         except Exception as e:
-            logging.error(f"Error discovering device at {ip}: {e}")
-    
+            logging.error(f"Error updating device at {ip}: {e}")
+
     return jsonify(results)
 
 @app.route('/api/devices', methods=['POST'])
