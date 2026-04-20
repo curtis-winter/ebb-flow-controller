@@ -226,15 +226,24 @@ async def add_device():
     ip = data.get('ip_address')
     account_id = data.get('account_id')
 
+    logging.info(f"Adding device: IP={ip}, account_id={account_id}")
+    
     if not ip:
         return jsonify({'error': 'IP address required'}), 400
 
-    credentials = get_account_credentials(account_id) if account_id else None
-
-    # Discover device
-    plug = await discover_device(ip, credentials)
-    if not plug:
-        return jsonify({'error': 'Unable to discover device'}), 500
+    # Try to discover device WITHOUT credentials first
+    # This works because discovery uses UDP broadcast which doesn't require auth
+    plug = None
+    try:
+        logging.info(f"Attempting discovery for {ip} without credentials...")
+        plug = await Discover.discover_single(ip, port=9999, timeout=5)
+        await plug.update()
+        logging.info(f"Discovery successful for {ip}: {plug.alias}, model: {plug.model}")
+    except Exception as e:
+        logging.error(f"Discovery failed for {ip}: {e}")
+        
+        # If that fails completely, we can't add the device
+        return jsonify({'error': f'Unable to discover device at {ip}. Error: {str(e)[:50]}'}), 500
 
     # Build device payload
     parent_dev = {
