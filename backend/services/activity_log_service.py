@@ -24,29 +24,22 @@ def log_activity(
 ) -> None:
     """
     Log an activity to the activity_log table.
-    
-    Args:
-        device_id: ID of the device
-        device_name: Name of the device
-        action_type: Type of action (e.g., 'device_toggle', 'device_status_refresh')
-        device_response: Device state response (e.g., 'ON', 'OFF', 'N/A')
-        device_status: Status of the operation ('success', 'failed', 'error')
-        trigger_source: What triggered the action ('Manual', 'Scheduled')
-        rack_name: Name of the rack (optional)
-        shelf_name: Name of the shelf (optional)
-        details: Additional details (e.g., 'retries:1')
     """
     timestamp = datetime.now(EDMONTON_TZ).strftime('%Y-%m-%d %H:%M:%S')
+    
+    # Ensure we handle None values properly for SQL
+    device_response = device_response if device_response else 'N/A'
+    device_status = device_status if device_status else 'unknown'
+    trigger_source = trigger_source if trigger_source else 'Manual'
+    rack_name = rack_name if rack_name else ''
+    shelf_name = shelf_name if shelf_name else ''
+    details = details if details else ''
     
     try:
         with db() as database:
             database.execute(
-                '''INSERT INTO activity_log 
-                   (timestamp, device_id, device_name, action_type, device_response, device_status, 
-                    trigger_source, rack_name, shelf_name, details) 
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''',
-                (timestamp, device_id, device_name, action_type, device_response, 
-                 device_status, trigger_source, rack_name, shelf_name, details)
+                'INSERT INTO activity_log (timestamp, device_id, device_name, action_type, device_response, device_status, trigger_source, rack_name, shelf_name, details) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                (timestamp, device_id, device_name, action_type, device_response, device_status, trigger_source, rack_name, shelf_name, details)
             )
             database.commit()
     except Exception as e:
