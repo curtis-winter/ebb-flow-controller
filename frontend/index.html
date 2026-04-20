@@ -1252,6 +1252,7 @@ const res = await fetch('/api/devices', {
             cards.forEach(card => {
                 const id = parseInt(card.dataset.id);
                 const statusEl = document.getElementById('status-' + id);
+                const btn = card.querySelector('.btn-toggle');
                 if (!statusEl) return;
                 
                 // Show ⟳ for current device
@@ -1260,13 +1261,20 @@ const res = await fetch('/api/devices', {
                     return;
                 }
                 
-                // Check if this device already has results - show timestamp from backend
+                // Check if this device already has results
                 const statusItem = status.results.find(r => r.id === id);
                 if (statusItem) {
                     if (statusItem.success === false) {
                         statusEl.textContent = '✗';
+                    } else if (statusItem.state !== undefined && statusItem.state !== null) {
+                        // Update status timestamp
+                        statusEl.textContent = statusItem.timestamp ? statusItem.timestamp.substring(11, 19) : '';
+                        // Update toggle button state
+                        if (btn) {
+                            btn.className = 'btn-toggle ' + (statusItem.state ? 'on' : '');
+                            btn.textContent = statusItem.state ? 'Turn Off' : 'Turn On';
+                        }
                     } else if (statusItem.timestamp) {
-                        // Use timestamp from backend (format: YYYY-MM-DD HH:MM:SS)
                         statusEl.textContent = statusItem.timestamp.substring(11, 19);
                     }
                 }
