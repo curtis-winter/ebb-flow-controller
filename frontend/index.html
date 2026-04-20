@@ -107,6 +107,12 @@
         .schedule-actions { display: flex; align-items: center; gap: 12px; }
         .schedule-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; }
         .schedule-toggle input { width: 18px; height: 18px; }
+        
+        /* Logs table sort arrows */
+        .sort-arrow::after { content: ' ↕'; opacity: 0.3; font-size: 10px; }
+        th.sorted-asc .sort-arrow::after { content: ' ↑'; opacity: 1; }
+        th.sorted-desc .sort-arrow::after { content: ' ↓'; opacity: 1; }
+        #logsTable tbody tr:nth-child(even) { background: rgba(255,255,255,0.02); }
 
         @media (max-width: 640px) { .devices-grid { grid-template-columns: 1fr; } header { flex-direction: column; align-items: flex-start; } .header-actions { width: 100%; flex-wrap: wrap; } .rack-builder { grid-template-columns: 1fr; } }
     </style>
@@ -130,9 +136,10 @@
         </header>
         
         <div class="tabs">
-            <button class="tab active" onclick="showTab('smart-devices')">Smart Device Configuration</button>
-            <button class="tab" onclick="showTab('grow-layout')">Grow Layout Configuration</button>
-            <button class="tab" onclick="showTab('grow-schedule')">Grow Schedule Configuration</button>
+<button class="tab active" onclick="showTab('smart-devices')">Smart Device Configuration</button>
+<button class="tab" onclick="showTab('grow-layout')">Grow Layout Configuration</button>
+<button class="tab" onclick="showTab('grow-schedule')">Grow Schedule Configuration</button>
+<button class="tab" onclick="showTab('logs')">Log History</button>
         </div>
         
         <div id="tab-smart-devices" class="tab-content active">
@@ -170,19 +177,57 @@
                 <div class="rack-canvas" id="rackCanvas">
                     <p style="color: var(--text-secondary); text-align: center; margin-top: 200px;">Select a rack to edit layout</p>
                 </div>
-            </div>
-        </div>
-        
-        <div id="tab-grow-schedule" class="tab-content">
+</div>
+</div>
+
+<div id="tab-grow-schedule" class="tab-content">
             <div class="schedule-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2>Device Schedules</h2>
                 <button class="btn-primary" onclick="showScheduleModal()">+ Add Schedule</button>
             </div>
             <div id="schedulesList" style="display: grid; gap: 12px;"></div>
         </div>
-    </div>
 
-    <div class="modal-overlay" id="accountModal">
+<div id="tab-logs" class="tab-content">
+<div style="margin: 20px;">
+<h3>Recent Activity Log</h3>
+<div style="display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+<input type="text" id="logFilterInput" placeholder="Filter logs..." onkeyup="filterLogs()" style="padding: 8px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-card); border-radius: 4px;">
+<select id="logFilterColumn" onchange="filterLogs()" style="padding: 8px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-card); border-radius: 4px;">
+<option value="">All Columns</option>
+<option value="device_name">Device</option>
+<option value="action_type">Action</option>
+<option value="rack_name">Rack</option>
+<option value="shelf_name">Shelf</option>
+<option value="device_response">Response</option>
+<option value="device_status">Status</option>
+<option value="trigger_source">Trigger</option>
+</select>
+</div>
+<div id="logsTableContainer" style="overflow: auto; height: 400px;">
+<table id="logsTable" style="width: 100%; border-collapse: collapse;">
+<thead style="position: sticky; top: 0; z-index: 1;">
+<tr style="background: var(--bg-card); cursor: pointer;" onclick="sortLogs(event)">
+<th data-col="id" style="padding: 8px; text-align: left;">ID <span class="sort-arrow"></span></th>
+<th data-col="timestamp" style="padding: 8px; text-align: left;">Timestamp <span class="sort-arrow"></span></th>
+<th data-col="device_name" style="padding: 8px; text-align: left;">Device <span class="sort-arrow"></span></th>
+<th data-col="action_type" style="padding: 8px; text-align: left;">Action <span class="sort-arrow"></span></th>
+<th data-col="rack_name" style="padding: 8px; text-align: left;">Rack <span class="sort-arrow"></span></th>
+<th data-col="shelf_name" style="padding: 8px; text-align: left;">Shelf <span class="sort-arrow"></span></th>
+<th data-col="device_response" style="padding: 8px; text-align: left;">Response <span class="sort-arrow"></span></th>
+<th data-col="device_status" style="padding: 8px; text-align: left;">Status <span class="sort-arrow"></span></th>
+<th data-col="trigger_source" style="padding: 8px; text-align: left;">Trigger <span class="sort-arrow"></span></th>
+<th data-col="details" style="padding: 8px; text-align: left;">Details <span class="sort-arrow"></span></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+
+<div class="modal-overlay" id="accountModal">
         <div class="modal">
             <h2>Add Account</h2>
             <div class="modal-row">
@@ -401,6 +446,7 @@
             document.getElementById('tab-' + tabId).classList.add('active');
             if (tabId === 'grow-layout') { loadRacks(); loadDevices(); renderAvailableDevices(); }
             if (tabId === 'grow-schedule') { loadSchedules(); }
+            if (tabId === 'logs') { loadLogs(); }
         }
 
         function showScheduleModal() {
@@ -899,6 +945,97 @@
 
         let discoveredDevices = {};
 
+let allLogs = [];
+let sortColumn = 'id';
+let sortDirection = 'desc';
+
+async function loadLogs() {
+  const res = await fetch('/api/logs');
+  if (res.ok) {
+    allLogs = await res.json();
+    applyLogFilterAndSort();
+  }
+}
+
+function applyLogFilterAndSort() {
+  let logs = [...allLogs];
+  
+  // Apply filter
+  const filterText = document.getElementById('logFilterInput').value.toLowerCase();
+  const filterCol = document.getElementById('logFilterColumn').value;
+  
+  if (filterText && filterCol) {
+    logs = logs.filter(log => (log[filterCol] || '').toString().toLowerCase().includes(filterText));
+  } else if (filterText) {
+    logs = logs.filter(log => 
+      Object.values(log).some(v => v && v.toString().toLowerCase().includes(filterText))
+    );
+  }
+  
+  // Apply sort
+  logs.sort((a, b) => {
+    let aVal = a[sortColumn] || '';
+    let bVal = b[sortColumn] || '';
+    
+    // Handle numeric sort for ID
+    if (sortColumn === 'id') {
+      aVal = parseInt(aVal) || 0;
+      bVal = parseInt(bVal) || 0;
+    }
+    
+    if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+    if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  });
+  
+  const tbody = document.querySelector('#logsTable tbody');
+  if (tbody) {
+    tbody.innerHTML = logs
+      .map(
+        log => `<tr>
+          <td style='padding:8px;text-align:left;'>${log.id}</td>
+          <td style='padding:8px;text-align:left;'>${log.timestamp}</td>
+          <td style='padding:8px;text-align:left;'>${log.device_name || 'N/A'}</td>
+          <td style='padding:8px;text-align:left;'>${log.action_type || 'N/A'}</td>
+          <td style='padding:8px;text-align:left;'>${log.rack_name || ''}</td>
+          <td style='padding:8px;text-align:left;'>${log.shelf_name || ''}</td>
+          <td style='padding:8px;text-align:left;'>${log.device_response || ''}</td>
+          <td style='padding:8px;text-align:left;'>${log.device_status || ''}</td>
+          <td style='padding:8px;text-align:left;'>${log.trigger_source || ''}</td>
+          <td style='padding:8px;text-align:left;'>${log.details || ''}</td>
+        </tr>`
+      )
+      .join('');
+  }
+}
+
+function filterLogs() {
+  applyLogFilterAndSort();
+}
+
+function sortLogs(event) {
+  const th = event.target.closest('th');
+  if (!th) return;
+  
+  const col = th.dataset.col;
+  if (!col) return;
+  
+  if (sortColumn === col) {
+    sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+  } else {
+    sortColumn = col;
+    sortDirection = 'desc';
+  }
+  
+  // Update header styles
+  document.querySelectorAll('#logsTable th').forEach(t => {
+    t.classList.remove('sorted-asc', 'sorted-desc');
+  });
+  th.classList.add(sortDirection === 'asc' ? 'sorted-asc' : 'sorted-desc');
+  
+  applyLogFilterAndSort();
+}
+
         async function runDiscovery() {
             const content = document.getElementById('discoverContent');
             document.getElementById('discoverAddBtn').style.display = 'none';
@@ -1028,7 +1165,7 @@ const res = await fetch('/api/devices', {
                 <div class="device-card" data-id="${d.id}">
                     <div class="device-header">
                         <span class="device-icon">🔌</span>
-                        <span class="device-status ${d.is_on ? 'on' : 'off'}" id="status-${d.id}">${d.is_on ? 'ON' : 'OFF'}</span>
+                        <span class="device-status" id="status-${d.id}">${d.last_updated ? d.last_updated.substring(11, 19) : '--:--:--'}</span>
                     </div>
                     <div class="device-name">${d.name}</div>
                     <div class="device-info">${d.ip_address}</div>
@@ -1045,12 +1182,18 @@ const res = await fetch('/api/devices', {
             const btn = document.getElementById('toggle-' + id);
             const status = document.getElementById('status-' + id);
             btn.disabled = true; btn.textContent = '...';
-            status.className = 'device-status loading'; status.textContent = '...';
+            status.textContent = '⟳';
 
             const res = await fetch('/api/devices/' + id + '/toggle', { method: 'POST' });
             const data = await res.json();
             if (data.error) { showAlert(data.error); loadDevices(); }
-            else { btn.className = 'btn-toggle ' + (data.is_on ? 'on' : ''); btn.textContent = data.is_on ? 'Turn Off' : 'Turn On'; status.className = 'device-status ' + (data.is_on ? 'on' : 'off'); status.textContent = data.is_on ? 'ON' : 'OFF'; }
+            else { 
+                btn.className = 'btn-toggle ' + (data.is_on ? 'on' : ''); 
+                btn.textContent = data.is_on ? 'Turn Off' : 'Turn On'; 
+                // Show timestamp after toggle
+                const now = new Date();
+                status.textContent = now.toTimeString().substring(0, 8);
+            }
             btn.disabled = false;
             renderAvailableDevices();
         }
@@ -1063,15 +1206,71 @@ const res = await fetch('/api/devices', {
 
         async function refreshAllDevices() {
             const btns = document.querySelectorAll('.btn-toggle');
-            btns.forEach(btn => { btn.disabled = true; btn.textContent = '...'; });
-            const accountId = document.getElementById('accountSelect').value;
-            await fetch('/api/devices/refresh', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({account_id: accountId || null})
-            });
+            const refreshBtn = document.querySelector('button[onclick="refreshAllDevices()"]');
+            
+            // Disable buttons during refresh
+            btns.forEach(btn => btn.disabled = true);
+            if (refreshBtn) {
+                refreshBtn.disabled = true;
+                refreshBtn.textContent = '⟳';
+            }
+            
+            // Start refresh
+            await fetch('/api/devices/refresh', { method: 'POST' });
+            
+            // Poll for status until complete
+            while (true) {
+                await new Promise(r => setTimeout(r, 300));
+                
+                try {
+                    const statusRes = await fetch('/api/devices/refresh/status');
+                    const status = await statusRes.json();
+                    
+                    // Update each device card with progress
+                    updateDeviceProgress(status);
+                    
+                    if (!status.in_progress) {
+                        break;
+                    }
+                } catch (e) {
+                    break;
+                }
+            }
+            
+            // Reload devices and re-enable buttons
             await loadDevices();
+            btns.forEach(btn => btn.disabled = false);
+            if (refreshBtn) {
+                refreshBtn.disabled = false;
+                refreshBtn.textContent = '↻';
+            }
             showAlert('Device status refreshed', false);
+        }
+
+        function updateDeviceProgress(status) {
+            const cards = document.querySelectorAll('.device-card');
+            cards.forEach(card => {
+                const id = parseInt(card.dataset.id);
+                const statusEl = document.getElementById('status-' + id);
+                if (!statusEl) return;
+                
+                // Show ⟳ for current device
+                if (status.current === id) {
+                    statusEl.textContent = '⟳';
+                    return;
+                }
+                
+                // Check if this device already has results - show timestamp from backend
+                const statusItem = status.results.find(r => r.id === id);
+                if (statusItem) {
+                    if (statusItem.success === false) {
+                        statusEl.textContent = '✗';
+                    } else if (statusItem.timestamp) {
+                        // Use timestamp from backend (format: YYYY-MM-DD HH:MM:SS)
+                        statusEl.textContent = statusItem.timestamp.substring(11, 19);
+                    }
+                }
+            });
         }
 
         async function addDevice() {

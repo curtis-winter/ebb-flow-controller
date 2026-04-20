@@ -143,3 +143,55 @@
 6. Devices persist across container restarts
 7. UI is responsive on mobile and desktop
 8. Visual design matches color palette specification
+
+## Architecture (Refactored)
+
+### File Structure
+
+```
+backend/
+├── app.py              # Flask routes and main application
+├── database.py         # Database utilities and schema
+└── services/
+    ├── __init__.py
+    ├── device_service.py   # Kasa device control logic
+    └── schedule_service.py # APScheduler integration
+```
+
+### Database Utility
+
+The `Database` class provides context manager support for cleaner resource handling:
+
+```python
+from backend.database import db
+
+# Usage:
+with db() as database:
+    devices = database.fetch_all('SELECT * FROM devices')
+    database.execute('INSERT INTO ...')
+    database.commit()
+
+# Convert row to dict:
+Database.dict(row)
+```
+
+### Device Service
+
+The device service handles all Kasa device communication using port 9999 discovery:
+
+```python
+from backend.services.device_service import get_device_state, toggle_device_state
+
+# Get state
+state = await get_device_state(credentials, ip_address, child_id)
+
+# Toggle
+new_state = await toggle_device_state(credentials, ip_address, child_id, desired_state=None)
+```
+
+### Key Implementation Notes
+
+1. **Port 9999 Discovery**: KLAP V2 fails with HS300 (v1.0), so port 9999 is used exclusively
+2. **Toggle Latency**: ~3-4 seconds is normal network latency
+3. **Credentials**: Stored encrypted in database using Fernet (AES-128)
+4. **Timezone**: All timestamps displayed in America/Edmonton (MST/MDT)

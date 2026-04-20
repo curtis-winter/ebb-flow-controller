@@ -16,7 +16,8 @@ COPY backend/ ./backend/
 COPY frontend/ ./frontend/
 
 ENV PYTHONUNBUFFERED=1
+ENV TZ=America/Edmonton
 
 EXPOSE 9731
 
-CMD ["gunicorn", "--bind", "0.0.0.0:9731", "--workers", "2", "--access-logfile", "-", "--error-logfile", "-", "backend.app:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:9731", "--workers", "1", "--threads", "2", "--access-logfile", "-", "--error-logfile", "-", "backend.app:app"]

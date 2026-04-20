@@ -49,45 +49,40 @@ docker exec flowboard tail -20 /data/app.log
 - Background scheduler for automated device control
 - Event logging for external state changes
 
-## KLAP V2 Authentication (Required for HS300 v2.0)
-
-The python-kasa library requires specific imports and setup for KLAP V2 authentication:
-
-```python
-# Required imports for KLAP V2
-from kasa.transports.klaptransport import KlapTransportV2
-from kasa.protocols import IotProtocol
-from kasa.iot import IotStrip
-from kasa.deviceconfig import DeviceConfig
-
-# Usage pattern:
-config = DeviceConfig(host=ip_address, credentials=credentials)
-protocol = IotProtocol(transport=KlapTransportV2(config=config))
-plug = IotStrip(host=ip_address, protocol=protocol)
-await plug.update()
-```
-
-### Critical Dependencies
-
-When using KLAP V2, you **must** install `tzdata`:
-
-```dockerfile
-RUN pip install --no-cache-dir -r backend/requirements.txt tzdata
-```
-
-Without `tzdata`, you'll see errors like:
-- `ZoneInfoNotFoundError: 'No time zone found with key MST7MDT'`
-- `Device response did not match our challenge`
-
-### Install PR 1625 for KLAP Fixes
-
-Some KLAP devices require the dev branch fix:
-
-```dockerfile
-RUN pip install --no-cache-dir "git+https://github.com/python-kasa/python-kasa.git@refs/pull/1625/head" --no-deps --force-reinstall
-```
-
 ## Known Issues
 
-- HS300 v2.0 (hardware version 2.0) may require python-kasa PR 1625 for full KLAP V2 support
 - Always install `tzdata` to prevent timezone errors
+
+## Device Communication (Important)
+
+### Discovery Method
+
+After testing, we found that **KLAP V2 does NOT work** with your devices, but **port 9999 discovery works**:
+
+- ❌ KLAP V2: `Device response did not match our challenge` - authentication fails
+- ✅ Port 9999: Works correctly
+
+The device service uses port 9999 discovery exclusively:
+
+```python
+# In backend/services/device_service.py
+async def _get_plug(credentials, parent_ip):
+    plug = await Discover.discover_single(parent_ip, credentials=credentials, port=9999)
+    await plug.update()
+    return plug
+```
+
+### Performance
+
+- **Toggle latency**: ~3-4 seconds per toggle operation
+- This is **normal** - it's the network latency to communicate with Kasa devices
+- There's no way to make it faster since it's a limitation of the device itself
+
+### Why Not KLAP V2?
+
+Your HS300 (hardware version 1.0) and python-kasa v0.10.2 have incompatibility issues with KLAP V2 authentication. The error message is:
+```
+Device response did not match our challenge on ip X.X.X.X, check that your e-mail and password (both case-sensitive) are correct.
+```
+
+This happens even with correct credentials because the authentication protocol differs between versions.
