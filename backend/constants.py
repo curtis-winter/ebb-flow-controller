@@ -1,14 +1,19 @@
 """
 Constants for FlowBoard application.
 """
+import os
 from zoneinfo import ZoneInfo
 
-# Timezone
-EDMONTON_TZ: ZoneInfo = ZoneInfo('America/Edmonton')
+# Timezone - read from environment variable or default to America/Edmonton
+TZ_NAME: str = os.environ.get('TZ', 'America/Edmonton')
+LOCAL_TZ: ZoneInfo = ZoneInfo(TZ_NAME)
+
+# Backwards compatibility alias
+EDMONTON_TZ = LOCAL_TZ
 
 # Retry configuration
-MAX_RETRIES: int = 3
-RETRY_DELAYS: list[float] = [0.5, 1.5]
+MAX_RETRIES: int = 4
+RETRY_DELAYS: list[float] = [1.0, 2.0, 5.0]
 
 # Action types
 ACTION_TYPES: dict[str, str] = {
