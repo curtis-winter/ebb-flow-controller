@@ -33,3 +33,15 @@ TRIGGER_SOURCE: dict[str, str] = {
     'MANUAL': 'Manual',
     'SCHEDULED': 'Scheduled',
 }
+
+# Target types for schedules
+TARGET_TYPES: list[str] = ['rack', 'shelf', 'device']
+
+# Schedule types for schedules
+SCHEDULE_TYPES: list[str] = ['on', 'off', 'on_then_off', 'cycle']
+
+# Component types
+COMPONENT_TYPES: list[str] = ['pump', 'light', 'aerator', 'sensor']
+
+# Providers
+PROVIDERS: list[str] = ['kasa', 'tapo']

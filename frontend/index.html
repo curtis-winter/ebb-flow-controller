@@ -135,10 +135,12 @@
             <h1>FlowBoard</h1>
         </header>
         
-        <div class="tabs">
-<button class="tab active" onclick="showTab('smart-devices')">Smart Device Configuration</button>
-<button class="tab" onclick="showTab('grow-layout')">Grow Layout Configuration</button>
-<button class="tab" onclick="showTab('grow-schedule')">Grow Schedule Configuration</button>
+<div class="tabs"> 
+<button class="tab active" onclick="showTab('smart-devices')">Smart Devices</button>
+<button class="tab" onclick="showTab('sensors')">ESP32 Sensors</button>
+<button class="tab" onclick="showTab('grow-layout')">Grow Layout</button>
+<button class="tab" onclick="showTab('grow-schedule')">Grow Schedule</button>
+<button class="tab" onclick="showTab('readings')">Sensor Readings</button>
 <button class="tab" onclick="showTab('logs')">Log History</button>
         </div>
         
@@ -188,7 +190,45 @@
             <div id="schedulesList" style="display: grid; gap: 12px;"></div>
         </div>
 
-<div id="tab-logs" class="tab-content">
+        <div id="tab-sensors" class="tab-content">
+            <div class="header-actions" style="margin-bottom: 20px;">
+                <button class="btn-primary" onclick="showEsp32Modal()">+ Add ESP32 Device</button>
+                <button class="btn-secondary" onclick="showWifiModal()">+ Add WiFi Network</button>
+                <button class="btn-secondary" onclick="scanForEsp32()">🔍 Scan Network</button>
+                <button class="btn-secondary" onclick="loadEsp32Devices()">↻</button>
+            </div>
+            <div id="scanStatus" style="display: none; margin-bottom: 16px; padding: 12px; background: var(--bg-card); border-radius: 6px;"></div>
+            <div id="wifiList" style="margin-bottom: 24px;"></div>
+            <div id="esp32List"></div>
+        </div>
+
+        <div id="tab-readings" class="tab-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+                <h2>Sensor Readings</h2>
+                <div style="display: flex; gap: 12px; align-items: center;">
+                    <select id="readingsEsp32Select" onchange="loadReadings()" style="padding: 8px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-card); border-radius: 4px; min-width: 150px;">
+                        <option value="">All Devices</option>
+                    </select>
+                    <button class="btn-secondary" onclick="loadReadings()">↻</button>
+                </div>
+            </div>
+            <div id="latestReadings" style="margin-bottom: 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;"></div>
+            <h3 style="margin-bottom: 12px;">History</h3>
+            <div id="readingsTableContainer" style="overflow: auto; max-height: 400px; background: var(--bg-card); border-radius: 8px;">
+                <table id="readingsTable" style="width: 100%; border-collapse: collapse;">
+                    <thead style="position: sticky; top: 0; z-index: 1; background: var(--bg-card);">
+                        <tr>
+                            <th style="padding: 10px; text-align: left;">Sensor</th>
+                            <th style="padding: 10px; text-align: left;">Value</th>
+                            <th style="padding: 10px; text-align: left;">Time</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="tab-logs" class="tab-content">
 <div style="margin: 20px;">
 <h3>Recent Activity Log</h3>
 <div style="display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
@@ -365,6 +405,20 @@
         </div>
     </div>
 
+    <div class="modal-overlay" id="sensorSelectModal">
+        <div class="modal">
+            <h2>Add Sensor to Shelf</h2>
+            <div class="modal-row">
+                <label>Select Sensor</label>
+                <select class="modal-select" id="sensorSelect"></select>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-secondary" onclick="hideModals()">Cancel</button>
+                <button class="btn-primary" onclick="addSensorToShelf()">Add</button>
+            </div>
+        </div>
+    </div>
+
 <div class="modal-overlay" id="scheduleModal">
 <div class="modal" style="max-width: 500px;">
 <h2>Add Schedule</h2>
@@ -441,6 +495,97 @@
 </div>
 </div>
 
+<div class="modal-overlay" id="esp32Modal">
+<div class="modal">
+<h2 id="esp32ModalTitle">Add ESP32 Device</h2>
+<div class="modal-row">
+<label>Device Name</label>
+<input type="text" class="modal-input" id="esp32Name" placeholder="e.g., Hydro Sensor 1">
+</div>
+<div class="modal-row">
+<label>IP Address (optional)</label>
+<input type="text" class="modal-input" id="esp32Ip" placeholder="192.168.1.x">
+</div>
+<div class="modal-row">
+<label>MAC Address</label>
+<input type="text" class="modal-input" id="esp32Mac" placeholder="AA:BB:CC:DD:EE:FF">
+</div>
+<div class="modal-actions">
+<button class="btn-secondary" onclick="hideModals()">Cancel</button>
+<button class="btn-primary" id="esp32SaveBtn" onclick="saveEsp32()">Add</button>
+</div>
+</div>
+</div>
+
+<div class="modal-overlay" id="sensorModal">
+<div class="modal">
+<h2 id="sensorModalTitle">Add Sensor</h2>
+<div class="modal-row">
+<label>Sensor Name</label>
+<input type="text" class="modal-input" id="sensorName" placeholder="e.g., Water Level A1">
+</div>
+<div class="modal-row">
+<label>Sensor Type</label>
+<select class="modal-select" id="sensorType">
+<option value="analog">Analog (ADC)</option>
+<option value="digital">Digital</option>
+<option value="ds18b20">DS18B20 (Temperature)</option>
+<option value="dht11">DHT11 (Temp/Humidity)</option>
+<option value="dht22">DHT22 (Temp/Humidity)</option>
+<option value="bme280">BME280 (Pressure)</option>
+<option value="capacitive">Capacitive Soil</option>
+</select>
+</div>
+<div class="modal-row">
+<label>GPIO Pin Number</label>
+<input type="number" class="modal-input" id="sensorPin" min="0" max="39" placeholder="4">
+</div>
+<div class="modal-row">
+<label>Pin Mode</label>
+<select class="modal-select" id="sensorPinMode">
+<option value="INPUT">INPUT</option>
+<option value="INPUT_PULLUP">INPUT_PULLUP</option>
+<option value="INPUT_PULLDOWN">INPUT_PULLDOWN</option>
+</select>
+</div>
+<div class="modal-row">
+<label>Calibration Offset</label>
+<input type="number" class="modal-input" id="sensorOffset" step="any" placeholder="0.0">
+</div>
+<div class="modal-row">
+<label>Calibration Scale</label>
+<input type="number" class="modal-input" id="sensorScale" step="any" value="1.0" placeholder="1.0">
+</div>
+<div class="modal-actions">
+<button class="btn-secondary" onclick="hideModals()">Cancel</button>
+<button class="btn-primary" id="sensorSaveBtn" onclick="saveSensor()">Add</button>
+</div>
+</div>
+</div>
+
+<div class="modal-overlay" id="wifiModal">
+<div class="modal">
+<h2 id="wifiModalTitle">Add WiFi Network</h2>
+<div class="modal-row">
+<label>Network Name (SSID)</label>
+<input type="text" class="modal-input" id="wifiSsid" placeholder="YourWiFiNetwork">
+</div>
+<div class="modal-row">
+<label>Password</label>
+<input type="password" class="modal-input" id="wifiPassword" placeholder="WiFi Password">
+</div>
+<div class="modal-row">
+<label style="display: flex; align-items: center; gap: 8px;">
+<input type="checkbox" id="wifiDefault"> Set as default network
+</label>
+</div>
+<div class="modal-actions">
+<button class="btn-secondary" onclick="hideModals()">Cancel</button>
+<button class="btn-primary" id="wifiSaveBtn" onclick="saveWifi()">Add</button>
+</div>
+</div>
+</div>
+
     <script>
         let devices = [];
         let racks = [];
@@ -479,7 +624,85 @@
             if (tabId === 'grow-layout') { loadRacks(); loadDevices(); renderAvailableDevices(); }
             if (tabId === 'grow-schedule') { loadSchedules(); }
             if (tabId === 'logs') { loadLogs(); }
+            if (tabId === 'sensors') { loadEsp32Devices(); loadWifiNetworks(); }
+            if (tabId === 'readings') { loadReadings(); }
         }
+
+        let sensorReadings = [];
+        let readingsTimer = null;
+
+        async function loadReadings() {
+            const esp32Id = document.getElementById('readingsEsp32Select').value;
+            let url = '/api/sensors/readings/latest';
+            if (esp32Id) url = '/api/sensors/esp32/' + esp32Id + '/latest';
+            
+            try {
+                const res = await fetch(url);
+                sensorReadings = await res.json();
+                renderLatestReadings();
+                renderReadingsTable();
+                populateReadingsEsp32Select();
+            } catch (e) {
+                console.error('Failed to load readings:', e);
+            }
+        }
+
+        function renderLatestReadings() {
+            const div = document.getElementById('latestReadings');
+            if (sensorReadings.length === 0) {
+                div.innerHTML = '<p style="color: var(--text-secondary);">No readings yet. ESP32 must send data first.</p>';
+                return;
+            }
+            div.innerHTML = sensorReadings.map(r => `
+                <div style="background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 8px; padding: 16px;">
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">${r.esp32_name || 'ESP32'} - ${r.sensor_name}</div>
+                    <div style="font-size: 32px; font-weight: 600; color: var(--accent-gold);">${r.value.toFixed(1)}</div>
+                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">${formatTimestamp(r.timestamp)}</div>
+                </div>
+            `).join('');
+        }
+
+        function renderReadingsTable() {
+            const tbody = document.querySelector('#readingsTable tbody');
+            if (!tbody) return;
+            tbody.innerHTML = sensorReadings.map(r => `
+                <tr style="border-bottom: 1px solid var(--border-card);">
+                    <td style="padding: 10px;">${r.sensor_name}</td>
+                    <td style="padding: 10px; font-weight: 600;">${r.value.toFixed(2)}</td>
+                    <td style="padding: 10px; color: var(--text-secondary);">${formatTimestamp(r.timestamp)}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function populateReadingsEsp32Select() {
+            const select = document.getElementById('readingsEsp32Select');
+            if (select.options.length > 1) return;
+            
+            try {
+                const res = await fetch('/api/sensors/esp32');
+                const devices = await res.json();
+                devices.forEach(d => {
+                    select.innerHTML += `<option value="${d.id}">${d.name}</option>`;
+                });
+            } catch (e) {}
+        }
+
+        function formatTimestamp(ts) {
+            if (!ts) return '--';
+            const d = new Date(ts);
+            return d.toLocaleTimeString();
+        }
+
+        function startReadingsAutoRefresh() {
+            if (readingsTimer) clearInterval(readingsTimer);
+            readingsTimer = setInterval(() => {
+                if (document.getElementById('tab-readings').classList.contains('active')) {
+                    loadReadings();
+                }
+            }, 10000);
+        }
+
+        startReadingsAutoRefresh();
 
 function showScheduleModal() {
 updateScheduleTargetOptions();
@@ -871,7 +1094,7 @@ showAlert('Schedule created', false);
         function renderShelf(shelf, comps) {
             const pumps = comps.filter(c => c.component_type === 'pump');
             const lights = comps.filter(c => c.component_type === 'light');
-            const sensors = comps.filter(c => c.component_type === 'sensor');
+            const sensors = shelf.sensors || [];
             return `
                 <div class="shelf-item" data-id="${shelf.id}" data-type="shelf">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -897,9 +1120,10 @@ showAlert('Schedule created', false);
                         <div>
                             <strong style="color: var(--accent-gold);">Sensors:</strong>
                             <div class="component-slot" data-parent="shelf" data-id="${shelf.id}" data-type="sensor">
-                                ${sensors.length === 0 ? '<span style="color: var(--text-secondary); font-size: 12px;">Add sensor</span>' : ''}
-                                ${sensors.map(c => renderComponentChip(c)).join('')}
+                                ${sensors.length === 0 ? '<span style="color: var(--text-secondary); font-size: 12px;">No sensors</span>' : ''}
+                                ${sensors.map(s => `<div class="component-chip sensor" data-id="${s.id}"><span>🌡️ ${s.name}</span><span style="opacity: 0.6; cursor: pointer;" onclick="removeSensorFromShelf(${s.id}, ${shelf.id})">✕</span></div>`).join('')}
                             </div>
+                            <button class="btn-secondary" style="margin-top: 8px; font-size: 12px; padding: 6px 12px;" onclick="showSensorSelectModal(${shelf.id})">+ Add Sensor</button>
                         </div>
                     </div>
                 </div>
@@ -921,6 +1145,56 @@ showAlert('Schedule created', false);
             const confirmed = await showConfirm('Remove this component?');
             if (!confirmed) return;
             await fetch('/api/components/' + id, { method: 'DELETE' });
+            loadRackStructure(currentRackId);
+        }
+        
+        let currentSensorShelfId = null;
+        
+        async function showSensorSelectModal(shelfId) {
+            currentSensorShelfId = shelfId;
+            const res = await fetch('/api/sensors');
+            const sensors = await res.json();
+            const select = document.getElementById('sensorSelect');
+            select.innerHTML = sensors.filter(s => !s.shelf_id).map(s => 
+                `<option value="${s.id}">${s.esp32_name} - ${s.name}</option>`
+            ).join('');
+            if (select.options.length === 0) {
+                select.innerHTML = '<option value="">No unassigned sensors</option>';
+            }
+            document.getElementById('sensorSelectModal').classList.add('active');
+        }
+        
+        async function addSensorToShelf() {
+            const sensorId = document.getElementById('sensorSelect').value;
+            if (!sensorId) { showAlert('Select a sensor'); return; }
+            
+            const shelfId = currentSensorShelfId;
+            
+            const shelfRes = await fetch('/api/racks/' + currentRackId + '/structure');
+            const rackData = await shelfRes.json();
+            const shelf = rackData.shelves.find(s => s.id === shelfId);
+            const rackId = rackData.rack.id;
+            
+            await fetch('/api/sensors/' + sensorId, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ shelf_id: shelfId, rack_id: rackId })
+            });
+            
+            hideModals();
+            loadRackStructure(currentRackId);
+        }
+        
+        async function removeSensorFromShelf(sensorId, shelfId) {
+            const confirmed = await showConfirm('Remove sensor from this shelf?');
+            if (!confirmed) return;
+            
+            await fetch('/api/sensors/' + sensorId, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ shelf_id: null, rack_id: null })
+            });
+            
             loadRackStructure(currentRackId);
         }
 
@@ -1154,7 +1428,7 @@ function sortLogs(event) {
                 <label style="display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--border-card); border-radius: 6px; margin-bottom: 8px; cursor: pointer;">
                     <input type="checkbox" value="${ip}" style="width: 18px; height: 18px;">
                     <div>
-                        <div style="font-weight: 600;">${discoveredDevices[ip].model || 'Smart Outlet'}</div>
+                        <div style="font-weight: 600;">${discoveredDevices[ip].alias || discoveredDevices[ip].model || 'Smart Outlet'}</div>
                         <div style="color: var(--text-secondary); font-size: 12px;">${ip}</div>
                     </div>
                 </label>
@@ -1165,14 +1439,19 @@ function sortLogs(event) {
         async function addDiscoveredDevices() {
             const checkboxes = document.querySelectorAll('#discoverContent input[type="checkbox"]:checked');
             const ips = Array.from(checkboxes).map(c => c.value);
-            const accountId = document.getElementById('accountSelect').value || null;
+            const accountIdSelect = document.getElementById('accountSelect');
+            const accountId = accountIdSelect && accountIdSelect.value ? parseInt(accountIdSelect.value) : null;
 
             for (const ip of ips) {
-const res = await fetch('/api/devices', {
+                const res = await fetch('/api/devices', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ ip_address: ip, account_id: accountId })
                 });
+                if (!res.ok) {
+                    const err = await res.json();
+                    console.error('Failed to add', ip, err);
+                }
             }
             hideModals();
             loadDevices();
@@ -1376,23 +1655,405 @@ const res = await fetch('/api/devices', {
             });
         }
 
-        async function addDevice() {
-            const ip = document.getElementById('deviceIp').value.trim();
-            const accountId = document.getElementById('accountSelect').value || null;
-            if (!ip) return;
+async function addDevice() {
+const ipInput = document.getElementById('deviceIp');
+const ip = ipInput.value.trim();
+const accountIdSelect = document.getElementById('accountSelect');
+const accountId = accountIdSelect && accountIdSelect.value ? parseInt(accountIdSelect.value) : null;
 
-            const res = await fetch('/api/devices', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ip_address: ip, account_id: accountId })
-            });
+console.log('IP input value:', JSON.stringify(ipInput.value), 'trimmed:', ip);
 
-            if (res.ok) { hideModals(); loadDevices(); }
-            else { const data = await res.json(); showAlert(data.error || 'Failed to add device'); }
-        }
+if (!ip) { showAlert('Please enter an IP address'); return; }
+
+const payload = { ip_address: ip };
+if (accountId) payload.account_id = accountId;
+
+console.log('Sending payload:', JSON.stringify(payload));
+
+const res = await fetch('/api/devices', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify(payload)
+});
+
+if (res.ok) { 
+console.log('Device added successfully');
+hideModals(); 
+ipInput.value = '';
+loadDevices(); 
+}
+else { const data = await res.json(); showAlert(data.error || 'Failed to add device'); }
+}
 
         loadAccounts();
         loadDevices();
+        
+        let esp32Devices = [];
+        let currentEsp32Id = null;
+        let editingSensorId = null;
+        let wifiNetworks = [];
+        
+        function showWifiModal(id) {
+            document.getElementById('wifiModalTitle').textContent = id ? 'Edit WiFi Network' : 'Add WiFi Network';
+            document.getElementById('wifiSaveBtn').textContent = id ? 'Save' : 'Add';
+            document.getElementById('wifiSsid').value = '';
+            document.getElementById('wifiPassword').value = '';
+            document.getElementById('wifiDefault').checked = false;
+            if (id) {
+                const net = wifiNetworks.find(w => w.id === id);
+                if (net) {
+                    document.getElementById('wifiSsid').value = net.ssid;
+                }
+            }
+            document.getElementById('wifiModal').classList.add('active');
+            document.getElementById('wifiSsid').focus();
+        }
+        
+        async function loadWifiNetworks() {
+            const res = await fetch('/api/sensors/wifi');
+            wifiNetworks = await res.json();
+            renderWifiList();
+        }
+        
+        function renderWifiList() {
+            const list = document.getElementById('wifiList');
+            if (wifiNetworks.length === 0) {
+                list.innerHTML = '';
+                return;
+            }
+            list.innerHTML = '<h3 style="margin-bottom: 12px;">WiFi Networks</h3>' + wifiNetworks.map(w => `
+                <div style="display: inline-flex; align-items: center; gap: 8px; background: var(--bg-card); padding: 8px 12px; border-radius: 6px; margin-right: 8px; margin-bottom: 8px;">
+                    <span>${w.ssid}${w.is_default ? ' ★' : ''}</span>
+                    <button class="btn-small" onclick="showWifiModal(${w.id})">Edit</button>
+                    <button class="btn-small" onclick="setDefaultWifi(${w.id})">${w.is_default ? 'Default' : 'Set Default'}</button>
+                    <button class="btn-delete" onclick="deleteWifi(${w.id})">✕</button>
+                </div>
+            `).join('');
+        }
+        
+        async function saveWifi() {
+            const ssid = document.getElementById('wifiSsid').value.trim();
+            const password = document.getElementById('wifiPassword').value;
+            const is_default = document.getElementById('wifiDefault').checked;
+            
+            if (!ssid || !password) { showAlert('SSID and password required'); return; }
+            
+            const res = await fetch('/api/sensors/wifi', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ssid, password, is_default })
+            });
+            
+            if (res.ok) {
+                hideModals();
+                loadWifiNetworks();
+            } else {
+                const data = await res.json();
+                showAlert(data.error || 'Failed to save WiFi');
+            }
+        }
+        
+        async function setDefaultWifi(id) {
+            await fetch('/api/sensors/wifi/default/' + id, { method: 'POST' });
+            loadWifiNetworks();
+        }
+        
+        async function deleteWifi(id) {
+            if (!(await showConfirm('Delete this WiFi network?'))) return;
+            await fetch('/api/sensors/wifi/' + id, { method: 'DELETE' });
+            loadWifiNetworks();
+        }
+        
+        async function scanForEsp32() {
+            const statusDiv = document.getElementById('scanStatus');
+            statusDiv.style.display = 'block';
+            statusDiv.innerHTML = '<p>Waiting for ESP32 devices to check in... (30 seconds)</p>';
+            
+            statusDiv.style.background = 'var(--bg-card)';
+            
+            const startTime = Date.now();
+            
+            const interval = setInterval(async () => {
+                await loadEsp32Devices();
+                const elapsed = Math.round((Date.now() - startTime) / 1000);
+                const remaining = 30 - elapsed;
+                statusDiv.innerHTML = `<p>Waiting for ESP32 devices... (${remaining}s remaining)</p>`;
+                
+                if (remaining <= 0 || esp32Devices.length > 0) {
+                    clearInterval(interval);
+                    statusDiv.innerHTML = `<p>Found ${esp32Devices.length} ESP32 device(s)</p>`;
+                    setTimeout(() => { statusDiv.style.display = 'none'; }, 3000);
+                }
+            }, 1000);
+        }
+        
+        function showEsp32Modal(id) {
+            document.getElementById('esp32ModalTitle').textContent = id ? 'Edit ESP32 Device' : 'Add ESP32 Device';
+            document.getElementById('esp32SaveBtn').textContent = id ? 'Save' : 'Add';
+            document.getElementById('esp32Name').value = '';
+            document.getElementById('esp32Ip').value = '';
+            document.getElementById('esp32Mac').value = '';
+            if (id) {
+                const device = esp32Devices.find(d => d.id === id);
+                if (device) {
+                    document.getElementById('esp32Name').value = device.name || '';
+                    document.getElementById('esp32Ip').value = device.ip_address || '';
+                    document.getElementById('esp32Mac').value = device.mac_address || '';
+                }
+            }
+            document.getElementById('esp32Modal').classList.add('active');
+            document.getElementById('esp32Name').focus();
+        }
+        
+        async function loadEsp32Devices() {
+            const res = await fetch('/api/sensors/esp32');
+            esp32Devices = await res.json();
+            renderEsp32List();
+        }
+        
+        function renderEsp32List() {
+            const list = document.getElementById('esp32List');
+            if (esp32Devices.length === 0) {
+                list.innerHTML = '<div class="empty-state"><h2>No ESP32 Devices</h2><p>Add an ESP32 device to configure its sensors</p></div>';
+                return;
+            }
+            list.innerHTML = esp32Devices.map(d => `
+                <div class="device-card" style="cursor: pointer;" onclick="selectEsp32(${d.id})">
+                    <div class="device-header">
+                        <span class="device-icon">🌡️</span>
+                        <span class="device-status">${d.is_active ? 'Active' : 'Inactive'}</span>
+                    </div>
+                    <div class="device-name">${d.name}</div>
+                    <div class="device-info">${d.sensor_count} sensor${d.sensor_count !== 1 ? 's' : ''} | ${d.active_sensors} active</div>
+                    <div class="device-actions" onclick="event.stopPropagation()">
+                        <button class="btn-small" onclick="showEsp32Modal(${d.id})">Edit</button>
+                        <button class="btn-small" onclick="pullSensorsFromEsp32(${d.id})">Pull</button>
+                        <button class="btn-small" onclick="pushSensorsToEsp32(${d.id})">Push</button>
+                        <button class="btn-small" onclick="triggerEsp32Readings(${d.id})">↻ Refresh</button>
+                        <button class="btn-small" onclick="downloadEsp32Config(${d.id})">Download Config</button>
+                        <button class="btn-delete" onclick="deleteEsp32(${d.id})">🗑</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        async function selectEsp32(id) {
+            currentEsp32Id = id;
+            const device = esp32Devices.find(d => d.id === id);
+            if (!device) return;
+            
+            document.getElementById('esp32List').innerHTML = `
+                <div style="margin-bottom: 20px;">
+                    <button class="btn-secondary" onclick="loadEsp32Devices()">← Back</button>
+                    <button class="btn-primary" onclick="showSensorModal()">+ Add Sensor</button>
+                </div>
+                <h3 style="margin-bottom: 16px;">${device.name} - Sensors</h3>
+                <div id="sensorList"></div>
+            `;
+            await loadSensors(id);
+        }
+        
+        async function loadSensors(esp32Id) {
+            const res = await fetch('/api/sensors?esp32_id=' + esp32Id);
+            const sensors = await res.json();
+            renderSensorList(sensors);
+        }
+        
+        function renderSensorList(sensors) {
+            const list = document.getElementById('sensorList');
+            if (!list) return;
+            
+            if (sensors.length === 0) {
+                list.innerHTML = '<p style="color: var(--text-secondary);">No sensors configured. Add a sensor to get started.</p>';
+                return;
+            }
+            
+            list.innerHTML = sensors.map(s => `
+                <div class="schedule-card" style="margin-bottom: 12px;">
+                    <div class="schedule-info">
+                        <div class="schedule-name">
+                            <span class="device-status ${s.is_enabled ? 'on' : 'off'}">${s.is_enabled ? 'ON' : 'OFF'}</span>
+                            ${s.name}
+                        </div>
+                        <div class="schedule-details">
+                            <span>Type: ${s.sensor_type}</span>
+                            <span>GPIO: ${s.pin_number}</span>
+                            <span>Mode: ${s.pin_mode}</span>
+                            ${s.calibration_offset !== 0 ? '<span>Offset: ' + s.calibration_offset + '</span>' : ''}
+                            ${s.calibration_scale !== 1 ? '<span>Scale: ' + s.calibration_scale + '</span>' : ''}
+                        </div>
+                    </div>
+                    <div class="schedule-actions">
+                        <button class="btn-small" onclick="editSensor(${s.id})">Edit</button>
+                        <button class="btn-delete" onclick="deleteSensor(${s.id})">🗑</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function showSensorModal(sensor) {
+            editingSensorId = sensor ? sensor.id : null;
+            document.getElementById('sensorModalTitle').textContent = sensor ? 'Edit Sensor' : 'Add Sensor';
+            document.getElementById('sensorSaveBtn').textContent = sensor ? 'Save' : 'Add';
+            document.getElementById('sensorName').value = sensor ? sensor.name : '';
+            document.getElementById('sensorType').value = sensor ? sensor.sensor_type : 'analog';
+            document.getElementById('sensorPin').value = sensor ? sensor.pin_number : '';
+            document.getElementById('sensorPinMode').value = sensor ? sensor.pin_mode : 'INPUT';
+            document.getElementById('sensorOffset').value = sensor ? sensor.calibration_offset : '0';
+            document.getElementById('sensorScale').value = sensor ? sensor.calibration_scale : '1';
+            document.getElementById('sensorModal').classList.add('active');
+            document.getElementById('sensorName').focus();
+        }
+        
+        function editSensor(id) {
+            fetch('/api/sensors/' + id)
+                .then(r => r.json())
+                .then(s => showSensorModal(s));
+        }
+        
+        async function saveEsp32() {
+            const name = document.getElementById('esp32Name').value.trim();
+            const ip_address = document.getElementById('esp32Ip').value.trim();
+            const mac_address = document.getElementById('esp32Mac').value.trim().toUpperCase();
+            
+            if (!name) { showAlert('Device name required'); return; }
+            
+            const res = await fetch('/api/sensors/esp32', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, ip_address, mac_address })
+            });
+            
+            if (res.ok) {
+                hideModals();
+                loadEsp32Devices();
+            } else {
+                const data = await res.json();
+                showAlert(data.error || 'Failed to save device');
+            }
+        }
+        
+        async function saveSensor() {
+            if (!currentEsp32Id) return;
+            
+            const name = document.getElementById('sensorName').value.trim();
+            const sensor_type = document.getElementById('sensorType').value;
+            const pin_number = parseInt(document.getElementById('sensorPin').value);
+            const pin_mode = document.getElementById('sensorPinMode').value;
+            const calibration_offset = parseFloat(document.getElementById('sensorOffset').value) || 0;
+            const calibration_scale = parseFloat(document.getElementById('sensorScale').value) || 1;
+            
+            if (!name) { showAlert('Sensor name required'); return; }
+            if (isNaN(pin_number)) { showAlert('Valid pin number required'); return; }
+            
+            const payload = {
+                esp32_id: currentEsp32Id,
+                name,
+                sensor_type,
+                pin_number,
+                pin_mode,
+                calibration_offset,
+                calibration_scale
+            };
+            
+            let res;
+            if (editingSensorId) {
+                res = await fetch('/api/sensors/' + editingSensorId, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            } else {
+                res = await fetch('/api/sensors', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+            }
+            
+            if (res.ok) {
+                hideModals();
+                loadSensors(currentEsp32Id);
+            } else {
+                const data = await res.json();
+                showAlert(data.error || 'Failed to save sensor');
+            }
+        }
+        
+        async function deleteEsp32(id) {
+            if (!(await showConfirm('Delete this device and all its sensors?'))) return;
+            await fetch('/api/sensors/esp32/' + id, { method: 'DELETE' });
+            currentEsp32Id = null;
+            loadEsp32Devices();
+        }
+        
+        async function deleteSensor(id) {
+            if (!(await showConfirm('Delete this sensor?'))) return;
+            await fetch('/api/sensors/' + id, { method: 'DELETE' });
+            loadSensors(currentEsp32Id);
+        }
+        
+        async function downloadEsp32Config(id) {
+            const res = await fetch('/api/sensors/esp32/' + id + '/config');
+            if (!res.ok) {
+                showAlert('Failed to generate config');
+                return;
+            }
+            const config = await res.json();
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'esp32_config_' + config.device_name.replace(/\s+/g, '_') + '.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        async function pullSensorsFromEsp32(id) {
+            showAlert('Pulling sensors from ESP32...', 'info');
+            try {
+                const res = await fetch('/api/sensors/esp32/' + id + '/pull', { method: 'POST' });
+                if (!res.ok) {
+                    showAlert('Failed to pull sensors from ESP32');
+                    return;
+                }
+                const data = await res.json();
+                showAlert('Pulled ' + data.pulled + ' sensors successfully!');
+                loadEsp32Devices();
+            } catch (e) {
+                showAlert('Error pulling sensors: ' + e.message);
+            }
+        }
+        
+        async function pushSensorsToEsp32(id) {
+            showAlert('Pushing sensors to ESP32...', 'info');
+            try {
+                const res = await fetch('/api/sensors/esp32/' + id + '/push', { method: 'POST' });
+                if (!res.ok) {
+                    showAlert('Failed to push sensors to ESP32');
+                    return;
+                }
+                const data = await res.json();
+                showAlert('Pushed ' + data.pushped + ' sensors successfully!');
+            } catch (e) {
+                showAlert('Error pushing sensors: ' + e.message);
+            }
+        }
+        
+        async function triggerEsp32Readings(id) {
+            showAlert('Triggering sensor refresh...', 'info');
+            try {
+                const res = await fetch('/api/sensors/esp32/' + id + '/trigger', { method: 'POST' });
+                if (!res.ok) {
+                    showAlert('Failed to trigger ESP32');
+                    return;
+                }
+                showAlert('Reading triggered! Data should arrive shortly.');
+                setTimeout(() => loadReadings(), 3000);
+            } catch (e) {
+                showAlert('Error triggering ESP32: ' + e.message);
+            }
+        }
     </script>
 </body>
 </html>

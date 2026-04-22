@@ -27,3 +27,6 @@ Thumbs.db
 # Environment
 .env
 .env.local
+
+# ESP32 secrets (credentials stored separately)
+ESP32/Hydro\ Sensor/src/secrets.h

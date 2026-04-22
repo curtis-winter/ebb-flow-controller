@@ -8,7 +8,7 @@ from contextlib import contextmanager
 DB_PATH = '/data/devices.db'
 
 # Schema version - increment when making schema changes
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 def get_db() -> sqlite3.Connection:
@@ -112,11 +112,23 @@ def set_schema_version(version: int) -> None:
 def migrate_schema() -> None:
     """Run migrations to update the schema."""
     current_version = get_schema_version()
-    
+
     if current_version < 1:
         migrate_to_v1()
+
+    if current_version < 2:
+        migrate_to_v2()
     
-    # Add future migrations here
+    if current_version < 3:
+        migrate_to_v3()
+
+
+def migrate_to_v3() -> None:
+    """Add rack_id and shelf_id to esp32_sensors."""
+    add_column_if_not_exists('esp32_sensors', 'rack_id', 'INTEGER')
+    add_column_if_not_exists('esp32_sensors', 'shelf_id', 'INTEGER')
+    set_schema_version(3)
+    print("Migrated to v3: Added rack_id/shelf_id to esp32_sensors")
 
 
 def migrate_to_v1() -> None:
@@ -280,10 +292,8 @@ def migrate_schedules_schema() -> None:
             columns = [row['name'] for row in database.fetch_all("PRAGMA table_info(schedules)")]
             
             if 'target_type' not in columns:
-                # Backup old table
                 database.execute('ALTER TABLE schedules RENAME TO schedules_old')
                 
-                # Create new table
                 database.execute('''
                     CREATE TABLE schedules (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -301,7 +311,6 @@ def migrate_schedules_schema() -> None:
                     )
                 ''')
                 
-                # Migrate old data
                 old_schedules = database.fetch_all('SELECT * FROM schedules_old')
                 action_map = {'on': 'on', 'off': 'off'}
                 for old in old_schedules:
@@ -323,6 +332,68 @@ def migrate_schedules_schema() -> None:
                 print("Migrated schedules to new schema")
     except Exception as e:
         print(f"Schedule migration: {e}")
+
+
+def migrate_to_v2() -> None:
+    """Add ESP32 sensor configuration tables."""
+    with db() as database:
+        database.execute('''
+            CREATE TABLE IF NOT EXISTS esp32_devices (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                ip_address TEXT,
+                mac_address TEXT,
+                is_active INTEGER DEFAULT 1,
+                last_seen TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        database.execute('''
+            CREATE TABLE IF NOT EXISTS esp32_sensors (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                esp32_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                sensor_type TEXT NOT NULL,
+                pin_number INTEGER NOT NULL,
+                pin_mode TEXT DEFAULT 'INPUT',
+                calibration_offset REAL DEFAULT 0.0,
+                calibration_scale REAL DEFAULT 1.0,
+                is_enabled INTEGER DEFAULT 1,
+                rack_id INTEGER,
+                shelf_id INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (esp32_id) REFERENCES esp32_devices(id) ON DELETE CASCADE,
+                FOREIGN KEY (rack_id) REFERENCES racks(id) ON DELETE SET NULL,
+                FOREIGN KEY (shelf_id) REFERENCES shelves(id) ON DELETE SET NULL
+            )
+        ''')
+        
+        database.execute('''
+            CREATE TABLE IF NOT EXISTS sensor_readings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                esp32_id INTEGER NOT NULL,
+                sensor_id INTEGER,
+                value REAL,
+                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (esp32_id) REFERENCES esp32_devices(id) ON DELETE CASCADE,
+                FOREIGN KEY (sensor_id) REFERENCES esp32_sensors(id) ON DELETE SET NULL
+            )
+        ''')
+        
+        database.execute('''
+            CREATE TABLE IF NOT EXISTS wifi_config (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ssid TEXT NOT NULL UNIQUE,
+                password TEXT NOT NULL,
+                is_default INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        
+        database.commit()
+        set_schema_version(2)
+    print("Migrated to v2: ESP32 sensor tables created")
 
 
 def add_column_if_not_exists(table: str, column: str, column_type: str) -> None:

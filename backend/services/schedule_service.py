@@ -7,9 +7,10 @@ import asyncio
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from backend.constants import EDMONTON_TZ
-from backend.database import db
+from backend.database import db, Database
 from backend.services.device_service import get_device_state, toggle_device_state
 from backend.services.activity_log_service import log_toggle
+from backend.services.helpers import get_account_credentials, get_device_rack_shelf
 
 logger = logging.getLogger(__name__)
 
@@ -49,8 +50,6 @@ def check_schedules() -> None:
     Check and execute schedules that match the current time.
     This function is called by the APScheduler every minute.
     """
-    from backend.app import get_account_credentials, get_device_rack_shelf
-    
     now = datetime.now()
     current_day = now.weekday()
     current_hour = now.hour
@@ -98,7 +97,6 @@ def _execute_schedule_action(
     off_duration_seconds: int = 0,
 ) -> None:
     """Execute a schedule action for a device."""
-    from backend.app import get_account_credentials, get_device_rack_shelf
     
     device_id = device['id']
     device_name = device['name']
