@@ -158,29 +158,33 @@
             <div class="devices-grid" id="devicesGrid"></div>
         </div>
         
-        <div id="tab-grow-layout" class="tab-content">
-            <div class="rack-actions">
-                <button class="btn-primary" onclick="showRackModal()">+ New Rack</button>
-                <button class="btn-secondary" onclick="showShelfModal()" id="addShelfBtn" disabled>+ Add Shelf</button>
-                <button class="btn-secondary" onclick="showReservoirModal()" id="addReservoirBtn" disabled>+ Add Reservoir</button>
-                <button class="btn-secondary btn-delete" onclick="deleteCurrentRack()" id="deleteRackBtn" disabled>Delete Rack</button>
-            </div>
-            <div class="rack-builder">
-                <div style="grid-column: 1;">
-                    <div style="background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 8px; padding: 16px;">
-                        <h3 style="margin-bottom: 12px;">Racks</h3>
-                        <div id="rackList"></div>
+<div id="tab-grow-layout" class="tab-content">
+                    <div class="rack-actions">
+                        <button class="btn-primary" onclick="showRackModal()">+ New Rack</button>
+                        <button class="btn-secondary" onclick="showShelfModal()" id="addShelfBtn" disabled>+ Add Shelf</button>
+                        <button class="btn-secondary" onclick="showReservoirModal()" id="addReservoirBtn" disabled>+ Add Reservoir</button>
+                        <button class="btn-secondary btn-delete" onclick="deleteCurrentRack()" id="deleteRackBtn" disabled>Delete Rack</button>
                     </div>
-                    <div style="background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 8px; padding: 16px; margin-top: 16px;">
-                        <h3 style="margin-bottom: 12px;">Smart Plugs</h3>
-                        <div id="availableDevices"></div>
+                    <div class="rack-builder">
+                        <div style="grid-column: 1;">
+                            <div style="background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                                <h3 style="margin-bottom: 12px;">Racks</h3>
+                                <div id="rackList"></div>
+                            </div>
+                            <div style="background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 8px; padding: 16px;">
+                                <h3 style="margin-bottom: 12px;">Smart Plugs</h3>
+                                <div id="availableDevices"></div>
+                            </div>
+                            <div style="background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 8px; padding: 16px; margin-top: 16px;">
+                                <h3 style="margin-bottom: 12px;">Sensors</h3>
+                                <div id="availableSensors"></div>
+                            </div>
+                        </div>
+                        <div class="rack-canvas" id="rackCanvas">
+                            <p style="color: var(--text-secondary); text-align: center; margin-top: 200px;">Select a rack to edit layout</p>
+                        </div>
                     </div>
                 </div>
-                <div class="rack-canvas" id="rackCanvas">
-                    <p style="color: var(--text-secondary); text-align: center; margin-top: 200px;">Select a rack to edit layout</p>
-                </div>
-</div>
-</div>
 
 <div id="tab-grow-schedule" class="tab-content">
             <div class="schedule-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
@@ -617,11 +621,25 @@
         function setConfirmHandler(fn) { confirmHandler = fn; }
 
         function showTab(tabId) {
+            console.log('Switching to tab:', tabId);
             document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            event.target.classList.add('active');
-            document.getElementById('tab-' + tabId).classList.add('active');
-            if (tabId === 'grow-layout') { loadRacks(); loadDevices(); renderAvailableDevices(); }
+            
+            // Find and activate the clicked tab button
+            const buttons = document.querySelectorAll('.tab');
+            buttons.forEach(btn => {
+                if (btn.getAttribute('onclick').includes(tabId)) {
+                    btn.classList.add('active');
+                }
+            });
+            
+            const tabElement = document.getElementById('tab-' + tabId);
+            if (tabElement) {
+                tabElement.classList.add('active');
+            }
+            
+            // Load content for specific tabs
+            if (tabId === 'grow-layout') { loadRacks(); loadDevices(); renderAvailableDevices(); renderAvailableSensors(); }
             if (tabId === 'grow-schedule') { loadSchedules(); }
             if (tabId === 'logs') { loadLogs(); }
             if (tabId === 'sensors') { loadEsp32Devices(); loadWifiNetworks(); }
@@ -993,9 +1011,9 @@ showAlert('Schedule created', false);
             renderRackList();
             const defaultRack = racks.find(r => r.is_default);
             if (defaultRack && !currentRackId) {
-                selectRack(defaultRack.id);
+                await selectRack(defaultRack.id);
             } else if (racks.length > 0 && !currentRackId) {
-                selectRack(racks[0].id);
+                await selectRack(racks[0].id);
             }
         }
 
@@ -1023,13 +1041,15 @@ showAlert('Schedule created', false);
             `).join('');
         }
 
-        async function selectRack(rackId) {
+async function selectRack(rackId) {
             currentRackId = rackId;
             document.getElementById('addShelfBtn').disabled = false;
             document.getElementById('addReservoirBtn').disabled = false;
             document.getElementById('deleteRackBtn').disabled = false;
             renderRackList();
             await loadRackStructure(rackId);
+            renderAvailableDevices();
+            renderAvailableSensors();
         }
 
         async function loadRackStructure(rackId) {
@@ -1119,11 +1139,10 @@ showAlert('Schedule created', false);
                         </div>
                         <div>
                             <strong style="color: var(--accent-gold);">Sensors:</strong>
-                            <div class="component-slot" data-parent="shelf" data-id="${shelf.id}" data-type="sensor">
-                                ${sensors.length === 0 ? '<span style="color: var(--text-secondary); font-size: 12px;">No sensors</span>' : ''}
-                                ${sensors.map(s => `<div class="component-chip sensor" data-id="${s.id}"><span>🌡️ ${s.name}</span><span style="opacity: 0.6; cursor: pointer;" onclick="removeSensorFromShelf(${s.id}, ${shelf.id})">✕</span></div>`).join('')}
+                            <div class="component-slot sensor-slot" data-parent="shelf" data-id="${shelf.id}" data-type="sensor">
+                                ${sensors.length === 0 ? '<span style="color: var(--text-secondary); font-size: 12px;">Drag sensor here</span>' : ''}
+                                ${sensors.map(s => `<div class="component-chip sensor" data-sensor-id="${s.id}" draggable="true"><span>🌡️ ${s.name}</span><span style="opacity: 0.6; cursor: pointer;" onclick="removeSensorFromShelf(${s.id}, ${shelf.id})">✕</span></div>`).join('')}
                             </div>
-                            <button class="btn-secondary" style="margin-top: 8px; font-size: 12px; padding: 6px 12px;" onclick="showSensorSelectModal(${shelf.id})">+ Add Sensor</button>
                         </div>
                     </div>
                 </div>
@@ -1209,37 +1228,66 @@ showAlert('Schedule created', false);
             loadRacks();
         }
 
-        function renderAvailableDevices() {
+function renderAvailableDevices() {
             const div = document.getElementById('availableDevices');
             if (devices.length === 0) {
                 div.innerHTML = '<p style="color: var(--text-secondary);">No smart plugs added. Add them in Smart Device tab first.</p>';
                 return;
             }
-
+            
             const usedDeviceIds = new Set();
             if (currentRackStructure) {
                 currentRackStructure.components.forEach(c => {
                     if (c.device_id) usedDeviceIds.add(c.device_id);
                 });
             }
-
+            
             const available = devices.filter(d => !usedDeviceIds.has(d.id));
             if (available.length === 0) {
                 div.innerHTML = '<p style="color: var(--text-secondary);">All smart plugs assigned to this rack</p>';
                 return;
             }
-
+            
             div.innerHTML = available.map(d => `
                 <div class="draggable-device" draggable="true" data-device-id="${d.id}" data-device-name="${d.name.replace(/"/g, '&quot;')}">
                     <span class="device-status ${d.is_on ? 'on' : 'off'}">${d.is_on ? '💡' : '⭕'}</span>
                     ${d.name}
                 </div>
             `).join('');
-
+            
             div.querySelectorAll('.draggable-device').forEach(el => {
                 el.addEventListener('dragstart', e => {
                     e.dataTransfer.setData('deviceId', el.dataset.deviceId);
                     e.dataTransfer.setData('deviceName', el.dataset.deviceName);
+                });
+            });
+        }
+        
+        async function renderAvailableSensors() {
+            const div = document.getElementById('availableSensors');
+            if (!div) return;
+            
+            const res = await fetch('/api/sensors');
+            const allSensors = await res.json();
+            
+            // Filter out sensors already assigned to shelves
+            const availableSensors = allSensors.filter(s => !s.shelf_id);
+            
+            if (availableSensors.length === 0) {
+                div.innerHTML = '<p style="color: var(--text-secondary);">No unassigned sensors</p>';
+                return;
+            }
+            
+            div.innerHTML = availableSensors.map(s => `
+                <div class="draggable-device" draggable="true" data-sensor-id="${s.id}" data-sensor-name="${s.name.replace(/"/g, '&quot;')}">
+                    <span>🌡️</span> ${s.name} (${s.sensor_type}, GPIO ${s.pin_number})
+                </div>
+            `).join('');
+            
+            div.querySelectorAll('.draggable-device[data-sensor-id]').forEach(el => {
+                el.addEventListener('dragstart', e => {
+                    e.dataTransfer.setData('sensorId', el.dataset.sensorId);
+                    e.dataTransfer.setData('sensorName', el.dataset.sensorName);
                 });
             });
         }
@@ -1264,13 +1312,36 @@ showAlert('Schedule created', false);
 
             const deviceId = e.dataTransfer.getData('deviceId');
             const deviceName = e.dataTransfer.getData('deviceName');
-            if (!deviceId) return;
-
+            const sensorId = e.dataTransfer.getData('sensorId');
+            const sensorName = e.dataTransfer.getData('sensorName');
+            
             const parentType = slot.dataset.parent;
             const parentId = parseInt(slot.dataset.id);
             const componentType = slot.dataset.type;
-
-            const existingRes = await fetch('/api/components?parent_type=' + parentType + '&parent_id=' + parentId + '&device_id=' + deviceId);
+            
+            // Handle sensor drop
+            if (sensorId && componentType === 'sensor') {
+                // Get rack_id from currentRackStructure
+                if (!currentRackId) return;
+                
+                const shelfRes = await fetch('/api/racks/' + currentRackId + '/structure');
+                const rackData = await shelfRes.json();
+                const shelf = rackData.shelves.find(s => s.id === parentId);
+                if (shelf) {
+                    await fetch('/api/sensors/' + sensorId, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ shelf_id: parentId, rack_id: currentRackId })
+});
+            loadRackStructure(currentRackId);
+        }
+        return;
+    }
+    
+    // Handle device drop
+    if (!deviceId) return;
+    
+    const existingRes = await fetch('/api/components?parent_type=' + parentType + '&parent_id=' + parentId + '&device_id=' + deviceId);
             const existing = await existingRes.json();
             if (existing.length > 0) {
                 showAlert('This plug is already assigned to this component');
@@ -1859,7 +1930,7 @@ else { const data = await res.json(); showAlert(data.error || 'Failed to add dev
             renderSensorList(sensors);
         }
         
-        function renderSensorList(sensors) {
+function renderSensorList(sensors) {
             const list = document.getElementById('sensorList');
             if (!list) return;
             
@@ -1869,7 +1940,7 @@ else { const data = await res.json(); showAlert(data.error || 'Failed to add dev
             }
             
             list.innerHTML = sensors.map(s => `
-                <div class="schedule-card" style="margin-bottom: 12px;">
+                <div class="schedule-card draggable-sensor" style="margin-bottom: 12px; cursor: grab;" draggable="true" data-sensor-id="${s.id}" data-sensor-name="${s.name}">
                     <div class="schedule-info">
                         <div class="schedule-name">
                             <span class="device-status ${s.is_enabled ? 'on' : 'off'}">${s.is_enabled ? 'ON' : 'OFF'}</span>
@@ -1878,19 +1949,25 @@ else { const data = await res.json(); showAlert(data.error || 'Failed to add dev
                         <div class="schedule-details">
                             <span>Type: ${s.sensor_type}</span>
                             <span>GPIO: ${s.pin_number}</span>
-                            <span>Mode: ${s.pin_mode}</span>
-                            ${s.calibration_offset !== 0 ? '<span>Offset: ' + s.calibration_offset + '</span>' : ''}
-                            ${s.calibration_scale !== 1 ? '<span>Scale: ' + s.calibration_scale + '</span>' : ''}
+                            ${s.shelf_name ? '<span>📍 ' + s.shelf_name + '</span>' : ''}
                         </div>
                     </div>
-                    <div class="schedule-actions">
-                        <button class="btn-small" onclick="editSensor(${s.id})">Edit</button>
+                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                        <button class="btn-small" onclick="showEditSensorModal(${s.id}, '${s.name.replace(/'/g, "\\'")}', '${s.sensor_type}', ${s.pin_number})">Edit</button>
                         <button class="btn-delete" onclick="deleteSensor(${s.id})">🗑</button>
                     </div>
                 </div>
             `).join('');
+            
+            // Add drag event listeners
+            list.querySelectorAll('.draggable-sensor').forEach(el => {
+                el.addEventListener('dragstart', e => {
+                    e.dataTransfer.setData('sensorId', el.dataset.sensorId);
+                    e.dataTransfer.setData('sensorName', el.dataset.sensorName);
+});
+        });
         }
-        
+
         function showSensorModal(sensor) {
             editingSensorId = sensor ? sensor.id : null;
             document.getElementById('sensorModalTitle').textContent = sensor ? 'Edit Sensor' : 'Add Sensor';

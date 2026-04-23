@@ -484,7 +484,7 @@ def pull_sensors_from_esp32(esp32_id):
             return jsonify({'error': 'No IP address for device'}), 400
         
         try:
-            response = requests.get(f'http://{ip_address}:9731/api/sensors/list', timeout=5)
+            response = requests.get(f'http://{ip_address}:80/api/sensors/list', timeout=5)
             response.raise_for_status()
             data = response.json()
             
@@ -555,7 +555,7 @@ def push_sensors_to_esp32(esp32_id):
         
         try:
             response = requests.post(
-                f'http://{ip_address}:9731/api/sensors/config',
+                f'http://{ip_address}:80/api/sensors/config',
                 json={'sensors': sensor_list},
                 timeout=10
             )
@@ -581,7 +581,7 @@ def trigger_esp32_reading(esp32_id):
         
         try:
             response = requests.post(
-                f'http://{ip_address}:9731/api/sensors/trigger',
+                f'http://{ip_address}:80/api/sensors/trigger',
                 timeout=10
             )
             response.raise_for_status()
