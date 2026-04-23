@@ -6,7 +6,7 @@
 #include <ArduinoJson.h>
 #include "secrets.h"
 
-#define READ_INTERVAL_MS 30000
+#define READ_INTERVAL_MS_DEFAULT 30000
 #define CONFIG_PULL_INTERVAL_MS 300000
 #define DEFAULT_SERVER_PORT 9731
 #define LED_PIN 2
@@ -28,6 +28,7 @@ int sensorCount = 0;
 
 unsigned long lastRead = 0;
 unsigned long lastConfigPull = 0;
+unsigned long readIntervalMs = READ_INTERVAL_MS_DEFAULT;
 int myDeviceId = -1;
 
 char serverIp[16] = "10.0.0.228";
@@ -69,6 +70,10 @@ void loadConfig() {
     preferences.getString("wifiPass", wifiPassword, sizeof(wifiPassword));
     if (strlen(wifiPassword) == 0) strcpy(wifiPassword, WIFI_PASSWORD);
     
+    readIntervalMs = preferences.getInt("readIntervalMs", READ_INTERVAL_MS_DEFAULT);
+    if (readIntervalMs < 5000) readIntervalMs = 5000;
+    if (readIntervalMs > 3600000) readIntervalMs = 3600000;
+    
     sensorCount = preferences.getInt("sensorCount", 0);
     if (sensorCount == 0) {
         addDefaultSensors();
@@ -101,6 +106,9 @@ void loadConfig() {
     Serial.println(serverPort);
     Serial.print("  WiFi: ");
     Serial.println(wifiSsid);
+    Serial.print("  Read Interval: ");
+    Serial.print(readIntervalMs);
+    Serial.println("ms");
     Serial.print("  Sensors: ");
     Serial.println(sensorCount);
 }
@@ -111,6 +119,7 @@ void saveConfig() {
     preferences.putInt("serverPort", serverPort);
     preferences.putString("wifiSsid", wifiSsid);
     preferences.putString("wifiPass", wifiPassword);
+    preferences.putInt("readIntervalMs", readIntervalMs);
     preferences.putInt("sensorCount", sensorCount);
     
     for (int i = 0; i < sensorCount; i++) {
@@ -210,6 +219,12 @@ void handleRoot() {
                 <input type="number" name="serverPort" value=")rawliteral";
     html += String(serverPort);
     html += R"rawliteral(" required min="1" max="65535">
+            </div>
+            <div class="form-group">
+                <label>Read Interval (seconds)</label>
+                <input type="number" name="readIntervalSec" value=")rawliteral";
+    html += String(readIntervalMs / 1000);
+    html += R"rawliteral(" required min="5" max="3600">
             </div>
             
             <button type="submit">💾 Save Configuration</button>
@@ -331,6 +346,12 @@ void handleSaveConfig() {
     if (configServer.hasArg("serverPort")) {
         serverPort = configServer.arg("serverPort").toInt();
     }
+    if (configServer.hasArg("readIntervalSec")) {
+        int intervalSec = configServer.arg("readIntervalSec").toInt();
+        if (intervalSec >= 5 && intervalSec <= 3600) {
+            readIntervalMs = intervalSec * 1000;
+        }
+    }
     if (configServer.hasArg("sensorCount")) {
         sensorCount = configServer.arg("sensorCount").toInt();
         if (sensorCount < 0) sensorCount = 0;
@@ -412,6 +433,24 @@ void handleSensorConfig() {
     
     if (error) {
         configServer.send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+        return;
+    }
+    
+    if (doc.containsKey("update_rate")) {
+        int intervalSec = doc["update_rate"].as<int>();
+        if (intervalSec >= 5 && intervalSec <= 3600) {
+            readIntervalMs = intervalSec * 1000;
+            preferences.begin("esp32-sensor", false);
+            preferences.putInt("readIntervalMs", readIntervalMs);
+            preferences.end();
+            Serial.print("[Config] Update rate: ");
+            Serial.print(intervalSec);
+            Serial.println("s (saved)");
+        }
+    }
+    
+    if (!doc.containsKey("sensors")) {
+        configServer.send(200, "application/json", "{\"status\":\"ok\"}");
         return;
     }
     
@@ -803,7 +842,7 @@ void loop() {
         lastConfigPull = now;
     }
     
-    if (now - lastRead >= READ_INTERVAL_MS) {
+    if (now - lastRead >= readIntervalMs) {
         if (WiFi.status() != WL_CONNECTED) {
             Serial.println("Reconnecting WiFi...");
             WiFi.reconnect();

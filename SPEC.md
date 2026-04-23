@@ -3,8 +3,8 @@
 ## Project Overview
 - **Project Name**: EBB Flow Controller (FlowBoard)
 - **Type**: Web Application (Docker deployed)
-- **Core Functionality**: Manage multiple Kasa brand WiFi smart outlets through a web interface
-- **Target Users**: Home users managing smart home devices
+- **Core Functionality**: Manage multiple Kasa brand WiFi smart outlets and ESP32 sensors through a web interface
+- **Target Users**: Home users managing smart home devices and grow systems
 
 ## Architecture
 
@@ -17,8 +17,9 @@
 ### Components
 1. **Backend API** (Flask): REST API to discover and control Kasa devices
 2. **Frontend**: Web dashboard to view and control outlets
-3. **Database**: Stores device configurations, schedules, and activity logs
+3. **Database**: Stores device configurations, schedules, sensor readings, and activity logs
 4. **Scheduler**: Background APScheduler for automated device control
+5. **ESP32 Integration**: Sensor data collection from custom hardware
 
 ### File Structure
 ```
@@ -32,6 +33,12 @@ backend/
     ├── schedule_service.py   # APScheduler integration
     ├── activity_log_service.py  # Activity logging
     └── retry.py              # Retry decorator utilities
+routes/
+├── devices.py                # Device management routes
+├── schedules.py              # Schedule CRUD routes
+├── sensors.py                # ESP32 sensor routes
+├── racks.py                  # Rack/shelf organization routes
+└── logs.py                   # Activity log routes
 ```
 
 ## Functionality Specification
@@ -55,9 +62,16 @@ New design supporting rack/shelf/device levels:
 - **Target Types**: `rack`, `shelf`, `device`
 - **Schedule Types**:
   - `on` - Turn on at specific time
-  - `off` - Turn off at specific time  
+  - `off` - Turn off at specific time
   - `on_then_off` - Turn on, then off after duration (H:M:S)
   - `cycle` - Cycle on/off continuously
+
+#### ESP32 Sensor Integration
+- Configurable read interval (5-3600 seconds)
+- Automatic sensor data logging with rack/shelf tracking
+- Real-time sensor readings dashboard
+- Sensor calibration support (offset and scale)
+- Support for analog and digital sensors
 
 #### Activity Logging
 All device operations logged with:
@@ -88,6 +102,15 @@ All device operations logged with:
 | PUT | `/api/schedules/<id>` | Update schedule |
 | DELETE | `/api/schedules/<id>` | Delete schedule |
 | GET | `/api/logs` | Get activity logs |
+| GET | `/api/sensors` | List all sensors |
+| GET | `/api/sensors/esp32` | List ESP32 devices |
+| POST | `/api/sensors/esp32` | Add ESP32 device |
+| GET | `/api/sensors/readings` | Get sensor readings history |
+| POST | `/api/sensors/readings` | Submit sensor reading |
+| GET | `/api/racks` | List racks |
+| POST | `/api/racks` | Create rack |
+| PUT | `/api/racks/<id>` | Update rack |
+| DELETE | `/api/racks/<id>` | Delete rack |
 
 ### Data Models
 
@@ -136,6 +159,45 @@ All device operations logged with:
 - timestamp: TIMESTAMP
 ```
 
+#### ESP32 Device
+```
+- id: INTEGER PRIMARY KEY
+- name: VARCHAR
+- ip_address: VARCHAR
+- mac_address: VARCHAR
+- update_rate: INTEGER (seconds between readings)
+- is_active: INTEGER (0/1)
+- last_seen: TIMESTAMP
+- created_at: TIMESTAMP
+```
+
+#### ESP32 Sensor
+```
+- id: INTEGER PRIMARY KEY
+- esp32_id: INTEGER (foreign key)
+- name: VARCHAR
+- sensor_type: VARCHAR (analog/digital)
+- pin_number: INTEGER
+- pin_mode: VARCHAR (INPUT/OUTPUT)
+- calibration_offset: REAL
+- calibration_scale: REAL
+- rack_id: INTEGER (optional)
+- shelf_id: INTEGER (optional)
+- is_enabled: INTEGER (0/1)
+- created_at: TIMESTAMP
+```
+
+#### Sensor Reading
+```
+- id: INTEGER PRIMARY KEY
+- esp32_id: INTEGER (foreign key)
+- sensor_id: INTEGER (foreign key)
+- value: REAL
+- rack_id: INTEGER (captured at reading time)
+- shelf_id: INTEGER (captured at reading time)
+- timestamp: TIMESTAMP
+```
+
 ## Configuration
 
 ### Timezone
@@ -155,10 +217,14 @@ RETRY_DELAYS = [1.0, 2.0, 5.0]  # seconds
 - Single page dashboard with tabs
 - Header with app title and action buttons
 - Tab-based navigation:
-  - Smart Devices (device management)
-  - Grow Layout Configuration (rack/shelf builder)
-  - Grow Schedule Configuration (schedules)
-  - Log History (activity logs)
+  - System Configuration
+    - Smart Devices (device management)
+    - ESP32 Sensors (sensor configuration)
+    - Grow Layout (rack/shelf builder)
+    - Grow Schedule (schedules)
+  - Log History
+    - Smart Plugs (device activity)
+    - Sensor Readings (sensor history)
 
 ### Visual Design
 
@@ -172,6 +238,9 @@ RETRY_DELAYS = [1.0, 2.0, 5.0]  # seconds
 - Text Secondary: `#94a3b8` (slate-400)
 - Button Primary: `#3b82f6` (blue-500)
 - Button Hover: `#2563eb` (blue-600)
+- Special Accents:
+  - Teal: `#14b8a6` (for active states)
+  - Gold: `#f59e0b` (for sensor values)
 
 #### Typography
 - Font Family: "Outfit", sans-serif (Google Fonts)
@@ -185,6 +254,14 @@ RETRY_DELAYS = [1.0, 2.0, 5.0]  # seconds
 - Current state indicator (timestamp or refresh icon)
 - IP address display
 - Toggle button (Turn On/Turn Off)
+- Delete button
+
+#### Sensor Card
+- Sensor name and type
+- Current value with unit
+- Last reading timestamp
+- Calibration controls
+- Enable/disable toggle
 - Delete button
 
 #### Schedule Card
@@ -210,3 +287,5 @@ RETRY_DELAYS = [1.0, 2.0, 5.0]  # seconds
 4. **Timezone**: All timestamps in configurable timezone (default: America/Edmonton)
 5. **Network Mode**: Uses `host` mode for UDP broadcast discovery
 6. **Retry Logic**: 4 retries with 1s, 2s, 5s delays for device communication
+7. **Sensor Persistence**: ESP32 firmware stores rack_id/shelf_id in Preferences for persistence across reboots
+8. **Rack/Shelf Capture**: Sensor readings capture rack/shelf at time of reading, not lookup

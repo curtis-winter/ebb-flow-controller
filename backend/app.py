@@ -12,7 +12,7 @@ from backend.database import db, Database, init_schema, get_db
 from backend.constants import EDMONTON_TZ, PROVIDERS
 from backend.services.schedule_service import start_scheduler
 
-app = Flask(__name__, static_folder='../frontend', template_folder='../frontend')
+app = Flask(__name__, static_folder='../frontend', template_folder='../frontend', static_url_path='/static')
 CORS(app)
 
 logging.basicConfig(
@@ -43,6 +43,11 @@ def decrypt_value(encrypted_value):
     f = Fernet(get_encryption_key())
     return f.decrypt(encrypted_value.encode()).decode()
 
+@app.route('/favicon.ico')
+def favicon():
+    response = app.send_static_file('favicon.ico')
+    response.headers['Cache-Control'] = 'public, max-age=86400'
+    return response
 
 @app.route('/')
 def index():

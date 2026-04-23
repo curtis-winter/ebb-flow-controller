@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FlowBoard</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600&display=swap" rel="stylesheet">
@@ -12,9 +13,9 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Outfit', sans-serif; background-color: var(--bg-primary); color: var(--text-primary); min-height: 100vh; }
         .container { max-width: 1200px; margin: 0 auto; padding: 24px; }
-        header { display: flex; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px; }
+        header { display: flex; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 16px; }
         header h1 { margin: 0; line-height: 1; }
-        header svg + h1 { margin-left: 12px; }
+        header svg + h1 { margin-left: 8px; }
         h1 { font-size: 24px; font-weight: 600; }
         .header-actions { display: flex; gap: 12px; align-items: center; }
         .account-select { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-card); padding: 10px 12px; border-radius: 6px; font-family: inherit; font-size: 14px; min-width: 150px; }
@@ -26,7 +27,7 @@
         .btn-secondary:hover { background-color: var(--border-card); }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
         .devices-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-        .device-card { background-color: var(--bg-card); border: 1px solid var(--border-card); border-radius: 8px; padding: 20px; transition: transform 0.2s; }
+        .device-card { background-color: var(--bg-card); border: 1px solid var(--border-card); border-radius: 8px; padding: 20px; transition: transform 0.2s; position: relative; }
         .device-card:hover { transform: scale(1.02); }
         .device-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
         .device-icon { font-size: 32px; }
@@ -44,6 +45,8 @@
         .btn-toggle.on:hover { background-color: #c02e2a; }
         .btn-delete { background: transparent; color: var(--accent-red); padding: 10px; font-size: 18px; }
         .btn-delete:hover { background: rgba(219,58,52,0.1); }
+        .btn-warning { background: transparent; color: var(--accent-gold); padding: 4px 8px; font-size: 14px; border: 1px solid var(--accent-gold); border-radius: 4px; }
+        .btn-warning:hover { background: rgba(255,183,3,0.1); }
         .btn-small { background: transparent; color: var(--text-secondary); padding: 4px 8px; font-size: 14px; border: 1px solid var(--border-card); border-radius: 4px; }
         .btn-small:hover { background: var(--border-card); }
         .empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); }
@@ -64,13 +67,15 @@
         .modal-actions { display: flex; gap: 12px; justify-content: flex-end; }
         
         /* Tabs */
-        .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border-card); margin-bottom: 24px; }
+        .tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border-card); margin-bottom: 16px; position: sticky; top: 0; background: var(--bg-primary); z-index: 100; }
         .tab { padding: 12px 24px; cursor: pointer; border: none; background: none; color: var(--text-secondary); font-size: 15px; font-weight: 500; position: relative; }
         .tab:hover { color: var(--text-primary); }
         .tab.active { color: var(--btn-primary); }
         .tab.active::after { content: ''; position: absolute; bottom: -2px; left: 0; right: 0; height: 2px; background: var(--btn-primary); }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
+        .sub-tab-content { display: none; }
+        .sub-tab-content.active { display: block; }
 
         /* Rack Builder */
         .rack-builder { display: grid; grid-template-columns: 280px 1fr; gap: 24px; }
@@ -135,15 +140,22 @@
             <h1>FlowBoard</h1>
         </header>
         
-<div class="tabs">
-<button class="tab active" onclick="showTab('smart-devices')">Smart Devices</button>
-<button class="tab" onclick="showTab('sensors')">ESP32 Sensors</button>
-<button class="tab" onclick="showTab('grow-layout')">Grow Layout</button>
-<button class="tab" onclick="showTab('grow-schedule')">Grow Schedule</button>
+<div class="tabs main-tabs">
+<button class="tab active" onclick="showTab('system-config')">System Configuration</button>
 <button class="tab" onclick="showTab('logs')">Log History</button>
 </div>
         
-        <div id="tab-smart-devices" class="tab-content active">
+        <div id="tab-system-config" class="tab-content active">
+<div style="margin: 6px;">
+<div style="display: flex; gap: 0; border-bottom: 2px solid var(--border-card); margin-bottom: 8px; align-items: center;">
+<button type="button" class="tab" id="subTab-devices" onclick="showSubTab('smart-devices')" style="padding: 4px 16px; cursor: pointer; border: none; background: none; color: var(--accent-teal); border-bottom: 2px solid var(--accent-teal);">Smart Devices</button>
+<button type="button" class="tab" id="subTab-sensors" onclick="showSubTab('sensors')" style="padding: 4px 16px; cursor: pointer; border: none; background: none; color: var(--text-secondary);">ESP32 Sensors</button>
+<button type="button" class="tab" id="subTab-layout" onclick="showSubTab('grow-layout')" style="padding: 4px 16px; cursor: pointer; border: none; background: none; color: var(--text-secondary);">Grow Layout</button>
+<button type="button" class="tab" id="subTab-schedule" onclick="showSubTab('grow-schedule')" style="padding: 4px 16px; cursor: pointer; border: none; background: none; color: var(--text-secondary);">Grow Schedule</button>
+</div>
+</div>
+        
+        <div id="sub-content-smart-devices" class="sub-tab-content active">
             <div class="header-actions" style="margin-bottom: 20px;">
                 <select class="account-select" id="accountSelect" onchange="loadDevices()">
                     <option value="">Select Account</option>
@@ -157,7 +169,16 @@
             <div class="devices-grid" id="devicesGrid"></div>
         </div>
         
-<div id="tab-grow-layout" class="tab-content">
+<div id="sub-content-sensors" class="sub-tab-content">
+<div class="header-actions" style="margin-bottom: 20px;">
+<button class="btn-primary" onclick="showEsp32Modal()">+ Add ESP32</button>
+<button class="btn-secondary" onclick="showSensorModal()" id="addSensorBtn" disabled>+ Add Sensor</button>
+<button class="btn-secondary" onclick="refreshAllEsp32()" title="Refresh all ESP32 status">↻</button>
+</div>
+<div id="esp32List"></div>
+</div>
+        
+        <div id="sub-content-grow-layout" class="sub-tab-content">
                     <div class="rack-actions">
                         <button class="btn-primary" onclick="showRackModal()">+ New Rack</button>
                         <button class="btn-secondary" onclick="showShelfModal()" id="addShelfBtn" disabled>+ Add Shelf</button>
@@ -178,38 +199,28 @@
                                 <h3 style="margin-bottom: 12px;">Sensors</h3>
                                 <div id="availableSensors"></div>
                             </div>
-                        </div>
-                        <div class="rack-canvas" id="rackCanvas">
-                            <p style="color: var(--text-secondary); text-align: center; margin-top: 200px;">Select a rack to edit layout</p>
-                        </div>
+</div>
+                    <div class="rack-canvas" id="rackCanvas">
+                        <p style="color: var(--text-secondary); text-align: center; margin-top: 200px;">Select a rack to edit layout</p>
                     </div>
                 </div>
-
-<div id="tab-grow-schedule" class="tab-content">
+            </div>
+        
+        <div id="sub-content-grow-schedule" class="sub-tab-content">
             <div class="schedule-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                 <h2>Device Schedules</h2>
                 <button class="btn-primary" onclick="showScheduleModal()">+ Add Schedule</button>
             </div>
-            <div id="schedulesList" style="display: grid; gap: 12px;"></div>
+<div id="schedulesList" style="display: grid; gap: 12px;"></div>
         </div>
-
-        <div id="tab-sensors" class="tab-content">
-            <div class="header-actions" style="margin-bottom: 20px;">
-                <button class="btn-primary" onclick="showEsp32Modal()">+ Add ESP32 Device</button>
-                <button class="btn-secondary" onclick="showWifiModal()">+ Add WiFi Network</button>
-                <button class="btn-secondary" onclick="scanForEsp32()">🔍 Scan Network</button>
-                <button class="btn-secondary" onclick="loadEsp32Devices()">↻</button>
-            </div>
-            <div id="scanStatus" style="display: none; margin-bottom: 16px; padding: 12px; background: var(--bg-card); border-radius: 6px;"></div>
-            <div id="wifiList" style="margin-bottom: 24px;"></div>
-            <div id="esp32List"></div>
         </div>
-
-
 
         <div id="tab-logs" class="tab-content">
-<div style="margin: 20px;">
-<h3>Recent Activity Log</h3>
+        <div style="margin: 6px;">
+        <div style="display: flex; gap: 0; border-bottom: 2px solid var(--border-card); margin-bottom: 8px; align-items: center;">
+        <button type="button" class="tab" id="logSubTab-plugs" onclick="showLogSubTab('plugs')" style="padding: 4px 16px; cursor: pointer; border: none; background: none; color: var(--accent-teal); border-bottom: 2px solid var(--accent-teal);">Smart Plugs</button>
+        <button type="button" class="tab" id="logSubTab-sensors" onclick="showLogSubTab('sensors')" style="padding: 4px 16px; cursor: pointer; border: none; background: none; color: var(--text-secondary);">Sensor Readings</button>
+</div>
 <div style="display: flex; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
 <input type="text" id="logFilterInput" placeholder="Filter logs..." onkeyup="filterLogs()" style="padding: 8px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-card); border-radius: 4px;">
 <select id="logFilterColumn" onchange="filterLogs()" style="padding: 8px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-card); border-radius: 4px;">
@@ -227,7 +238,6 @@
 <table id="logsTable" style="width: 100%; border-collapse: collapse;">
 <thead style="position: sticky; top: 0; z-index: 1;">
 <tr style="background: var(--bg-card); cursor: pointer;" onclick="sortLogs(event)">
-<th data-col="id" style="padding: 8px; text-align: left;">ID <span class="sort-arrow"></span></th>
 <th data-col="timestamp" style="padding: 8px; text-align: left;">Timestamp <span class="sort-arrow"></span></th>
 <th data-col="device_name" style="padding: 8px; text-align: left;">Device <span class="sort-arrow"></span></th>
 <th data-col="action_type" style="padding: 8px; text-align: left;">Action <span class="sort-arrow"></span></th>
@@ -489,6 +499,10 @@
 <label>MAC Address</label>
 <input type="text" class="modal-input" id="esp32Mac" placeholder="AA:BB:CC:DD:EE:FF">
 </div>
+<div class="modal-row">
+<label>Read Interval (seconds)</label>
+<input type="number" class="modal-input" id="esp32UpdateRate" placeholder="30" min="5" max="3600">
+</div>
 <div class="modal-actions">
 <button class="btn-secondary" onclick="hideModals()">Cancel</button>
 <button class="btn-primary" id="esp32SaveBtn" onclick="saveEsp32()">Add</button>
@@ -516,8 +530,17 @@
 </select>
 </div>
 <div class="modal-row">
-<label>GPIO Pin Number</label>
-<input type="number" class="modal-input" id="sensorPin" min="0" max="39" placeholder="4">
+<label>GPIO Pin Number (ADC1 - WiFi Safe)</label>
+<select class="modal-select" id="sensorPin">
+<option value="34">GPIO 34 (ADC1_CH6)</option>
+<option value="35">GPIO 35 (ADC1_CH7)</option>
+<option value="32">GPIO 32 (ADC1_CH4)</option>
+<option value="33">GPIO 33 (ADC1_CH5)</option>
+<option value="36">GPIO 36 (ADC1_CH0)</option>
+<option value="37">GPIO 37 (ADC1_CH1)</option>
+<option value="38">GPIO 38 (ADC1_CH2)</option>
+<option value="39">GPIO 39 (ADC1_CH3)</option>
+</select>
 </div>
 <div class="modal-row">
 <label>Pin Mode</label>
@@ -542,29 +565,6 @@
 </div>
 </div>
 
-<div class="modal-overlay" id="wifiModal">
-<div class="modal">
-<h2 id="wifiModalTitle">Add WiFi Network</h2>
-<div class="modal-row">
-<label>Network Name (SSID)</label>
-<input type="text" class="modal-input" id="wifiSsid" placeholder="YourWiFiNetwork">
-</div>
-<div class="modal-row">
-<label>Password</label>
-<input type="password" class="modal-input" id="wifiPassword" placeholder="WiFi Password">
-</div>
-<div class="modal-row">
-<label style="display: flex; align-items: center; gap: 8px;">
-<input type="checkbox" id="wifiDefault"> Set as default network
-</label>
-</div>
-<div class="modal-actions">
-<button class="btn-secondary" onclick="hideModals()">Cancel</button>
-<button class="btn-primary" id="wifiSaveBtn" onclick="saveWifi()">Add</button>
-</div>
-</div>
-</div>
-</div>
 <script>
         let devices = [];
         let racks = [];
@@ -597,11 +597,11 @@
 
         function showTab(tabId) {
             console.log('Switching to tab:', tabId);
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.main-tabs > .tab').forEach(t => t.classList.remove('active'));
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
             
             // Find and activate the clicked tab button
-            const buttons = document.querySelectorAll('.tab');
+            const buttons = document.querySelectorAll('.main-tabs > .tab');
             buttons.forEach(btn => {
                 if (btn.getAttribute('onclick').includes(tabId)) {
                     btn.classList.add('active');
@@ -613,14 +613,76 @@
                 tabElement.classList.add('active');
             }
             
-// Load content for specific tabs
-if (tabId === 'grow-layout') { loadRacks(); loadDevices(); renderAvailableDevices(); renderAvailableSensors(); }
-if (tabId === 'grow-schedule') { loadSchedules(); }
-if (tabId === 'logs') { loadLogs(); }
-if (tabId === 'sensors') { loadEsp32Devices(); loadWifiNetworks(); }
-}
-
-function formatTimestamp(ts) {
+            // Load content for specific tabs
+            if (tabId === 'grow-layout') { loadRacks(); loadDevices(); renderAvailableDevices(); renderAvailableSensors(); }
+            if (tabId === 'grow-schedule') { loadSchedules(); }
+            if (tabId === 'logs') { showLogSubTab('plugs'); }
+            if (tabId === 'sensors') { loadEsp32Devices(); }
+            if (tabId === 'system-config') { showSubTab('smart-devices'); }
+        }
+        
+        function showSubTab(subTab) {
+            console.log('showSubTab called:', subTab);
+            document.getElementById('subTab-devices').style.color = 'var(--text-secondary)';
+            document.getElementById('subTab-devices').style.borderBottom = 'none';
+            document.getElementById('subTab-sensors').style.color = 'var(--text-secondary)';
+            document.getElementById('subTab-sensors').style.borderBottom = 'none';
+            document.getElementById('subTab-layout').style.color = 'var(--text-secondary)';
+            document.getElementById('subTab-layout').style.borderBottom = 'none';
+            document.getElementById('subTab-schedule').style.color = 'var(--text-secondary)';
+            document.getElementById('subTab-schedule').style.borderBottom = 'none';
+            
+            document.getElementById('sub-content-smart-devices').classList.remove('active');
+            document.getElementById('sub-content-sensors').classList.remove('active');
+            document.getElementById('sub-content-grow-layout').classList.remove('active');
+            document.getElementById('sub-content-grow-schedule').classList.remove('active');
+            
+            if (subTab === 'smart-devices') {
+                document.getElementById('subTab-devices').style.color = 'var(--accent-teal)';
+                document.getElementById('subTab-devices').style.borderBottom = '2px solid var(--accent-teal)';
+                document.getElementById('sub-content-smart-devices').classList.add('active');
+            } else if (subTab === 'sensors') {
+                document.getElementById('subTab-sensors').style.color = 'var(--accent-teal)';
+                document.getElementById('subTab-sensors').style.borderBottom = '2px solid var(--accent-teal)';
+                document.getElementById('sub-content-sensors').classList.add('active');
+                loadEsp32Devices();
+            } else if (subTab === 'grow-layout') {
+                document.getElementById('subTab-layout').style.color = 'var(--accent-teal)';
+                document.getElementById('subTab-layout').style.borderBottom = '2px solid var(--accent-teal)';
+                document.getElementById('sub-content-grow-layout').classList.add('active');
+                loadRacks(); loadDevices(); renderAvailableDevices(); renderAvailableSensors();
+            } else if (subTab === 'grow-schedule') {
+                document.getElementById('subTab-schedule').style.color = 'var(--accent-teal)';
+                document.getElementById('subTab-schedule').style.borderBottom = '2px solid var(--accent-teal)';
+                document.getElementById('sub-content-grow-schedule').classList.add('active');
+                loadSchedules();
+            }
+        }
+        
+        function showLogSubTab(subTab) {
+            console.log('showLogSubTab called:', subTab);
+            document.getElementById('logSubTab-plugs').style.color = 'var(--text-secondary)';
+            document.getElementById('logSubTab-plugs').style.borderBottom = 'none';
+            document.getElementById('logSubTab-sensors').style.color = 'var(--text-secondary)';
+            document.getElementById('logSubTab-sensors').style.borderBottom = 'none';
+            if (subTab === 'plugs') {
+                document.getElementById('logSubTab-plugs').style.color = 'var(--accent-teal)';
+                document.getElementById('logSubTab-plugs').style.borderBottom = '2px solid var(--accent-teal)';
+                resetLogsTable();
+                loadLogs();
+            } else {
+                document.getElementById('logSubTab-sensors').style.color = 'var(--accent-teal)';
+                document.getElementById('logSubTab-sensors').style.borderBottom = '2px solid var(--accent-teal)';
+                loadSensorLogs();
+            }
+        }
+        
+        const logsTableOriginal = document.getElementById('logsTableContainer').innerHTML;
+        function resetLogsTable() {
+            document.getElementById('logsTableContainer').innerHTML = logsTableOriginal;
+        }
+        
+        function formatTimestamp(ts) {
 if (!ts) return '--';
 const d = new Date(ts);
 return d.toLocaleTimeString();
@@ -1301,6 +1363,43 @@ async function loadLogs() {
   }
 }
 
+let allSensorReadings = [];
+async function loadSensorLogs() {
+const res = await fetch('/api/sensors/readings?limit=500');
+if (res.ok) {
+allSensorReadings = await res.json();
+renderSensorLogs();
+}
+}
+
+function renderSensorLogs() {
+const container = document.getElementById('logsTableContainer');
+if (allSensorReadings.length === 0) {
+container.innerHTML = '<p style="padding: 20px; color: var(--text-secondary);">No sensor readings found</p>';
+return;
+}
+let html = '<table id="logsTable" style="width: 100%; border-collapse: collapse;"><thead style="position: sticky; top: 0; z-index: 1; background: var(--bg-card);"><tr>';
+html += '<th style="padding: 8px; text-align: left;">Timestamp</th>';
+html += '<th style="padding: 8px; text-align: left;">Rack</th>';
+html += '<th style="padding: 8px; text-align: left;">Shelf</th>';
+html += '<th style="padding: 8px; text-align: left;">Sensor</th>';
+html += '<th style="padding: 8px; text-align: left;">Value</th>';
+html += '<th style="padding: 8px; text-align: left;">Type</th>';
+html += '</tr></thead><tbody>';
+allSensorReadings.forEach(r => {
+html += '<tr style="border-bottom: 1px solid var(--border-card);">';
+html += '<td style="padding: 8px;">' + (r.timestamp || '') + '</td>';
+html += '<td style="padding: 8px;">' + (r.rack_name || 'Unassigned') + '</td>';
+html += '<td style="padding: 8px;">' + (r.shelf_name || 'Unassigned') + '</td>';
+html += '<td style="padding: 8px;">' + (r.sensor_name || 'Unknown') + '</td>';
+html += '<td style="padding: 8px; color: var(--accent-gold);">' + (r.value ? r.value.toFixed(1) : '---') + '</td>';
+html += '<td style="padding: 8px;">' + (r.sensor_type || 'unknown') + '</td>';
+html += '</tr>';
+});
+html += '</tbody></table>';
+container.innerHTML = html;
+}
+
 function applyLogFilterAndSort() {
   let logs = [...allLogs];
   
@@ -1337,7 +1436,6 @@ function applyLogFilterAndSort() {
     tbody.innerHTML = logs
       .map(
         log => `<tr>
-          <td style='padding:8px;text-align:left;'>${log.id}</td>
           <td style='padding:8px;text-align:left;'>${log.timestamp}</td>
           <td style='padding:8px;text-align:left;'>${log.device_name || 'N/A'}</td>
           <td style='padding:8px;text-align:left;'>${log.action_type || 'N/A'}</td>
@@ -1666,78 +1764,8 @@ else { const data = await res.json(); showAlert(data.error || 'Failed to add dev
         let esp32Devices = [];
         let currentEsp32Id = null;
         let editingSensorId = null;
-        let wifiNetworks = [];
-        
-        function showWifiModal(id) {
-            document.getElementById('wifiModalTitle').textContent = id ? 'Edit WiFi Network' : 'Add WiFi Network';
-            document.getElementById('wifiSaveBtn').textContent = id ? 'Save' : 'Add';
-            document.getElementById('wifiSsid').value = '';
-            document.getElementById('wifiPassword').value = '';
-            document.getElementById('wifiDefault').checked = false;
-            if (id) {
-                const net = wifiNetworks.find(w => w.id === id);
-                if (net) {
-                    document.getElementById('wifiSsid').value = net.ssid;
-                }
-            }
-            document.getElementById('wifiModal').classList.add('active');
-            document.getElementById('wifiSsid').focus();
-        }
-        
-        async function loadWifiNetworks() {
-            const res = await fetch('/api/sensors/wifi');
-            wifiNetworks = await res.json();
-            renderWifiList();
-        }
-        
-        function renderWifiList() {
-            const list = document.getElementById('wifiList');
-            if (wifiNetworks.length === 0) {
-                list.innerHTML = '';
-                return;
-            }
-            list.innerHTML = '<h3 style="margin-bottom: 12px;">WiFi Networks</h3>' + wifiNetworks.map(w => `
-                <div style="display: inline-flex; align-items: center; gap: 8px; background: var(--bg-card); padding: 8px 12px; border-radius: 6px; margin-right: 8px; margin-bottom: 8px;">
-                    <span>${w.ssid}${w.is_default ? ' ★' : ''}</span>
-                    <button class="btn-small" onclick="showWifiModal(${w.id})">Edit</button>
-                    <button class="btn-small" onclick="setDefaultWifi(${w.id})">${w.is_default ? 'Default' : 'Set Default'}</button>
-                    <button class="btn-delete" onclick="deleteWifi(${w.id})">✕</button>
-                </div>
-            `).join('');
-        }
-        
-        async function saveWifi() {
-            const ssid = document.getElementById('wifiSsid').value.trim();
-            const password = document.getElementById('wifiPassword').value;
-            const is_default = document.getElementById('wifiDefault').checked;
-            
-            if (!ssid || !password) { showAlert('SSID and password required'); return; }
-            
-            const res = await fetch('/api/sensors/wifi', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ssid, password, is_default })
-            });
-            
-            if (res.ok) {
-                hideModals();
-                loadWifiNetworks();
-            } else {
-                const data = await res.json();
-                showAlert(data.error || 'Failed to save WiFi');
-            }
-        }
-        
-        async function setDefaultWifi(id) {
-            await fetch('/api/sensors/wifi/default/' + id, { method: 'POST' });
-            loadWifiNetworks();
-        }
-        
-        async function deleteWifi(id) {
-            if (!(await showConfirm('Delete this WiFi network?'))) return;
-            await fetch('/api/sensors/wifi/' + id, { method: 'DELETE' });
-            loadWifiNetworks();
-        }
+        let editingEsp32Id = null;
+        let esp32LastPushed = {};
         
         async function scanForEsp32() {
             const statusDiv = document.getElementById('scanStatus');
@@ -1768,22 +1796,30 @@ else { const data = await res.json(); showAlert(data.error || 'Failed to add dev
             document.getElementById('esp32Name').value = '';
             document.getElementById('esp32Ip').value = '';
             document.getElementById('esp32Mac').value = '';
+            document.getElementById('esp32UpdateRate').value = '30';
+            editingEsp32Id = id || null;
             if (id) {
                 const device = esp32Devices.find(d => d.id === id);
                 if (device) {
                     document.getElementById('esp32Name').value = device.name || '';
                     document.getElementById('esp32Ip').value = device.ip_address || '';
                     document.getElementById('esp32Mac').value = device.mac_address || '';
+                    document.getElementById('esp32UpdateRate').value = device.update_rate || 30;
                 }
             }
             document.getElementById('esp32Modal').classList.add('active');
             document.getElementById('esp32Name').focus();
         }
         
+let esp32RefreshInterval = null;
+
 async function loadEsp32Devices() {
 const res = await fetch('/api/sensors/esp32');
 esp32Devices = await res.json();
 renderEsp32List();
+if (!esp32RefreshInterval) {
+esp32RefreshInterval = setInterval(() => renderEsp32List(), 30000);
+}
 }
 
 async function renderEsp32List() {
@@ -1812,14 +1848,13 @@ list.innerHTML = deviceData.map(({ device, sensors, readingsMap }) => `
 <span class="device-icon">🌡️</span>
 <span class="device-status">${device.is_active ? 'Active' : 'Inactive'}</span>
 </div>
-<div class="device-name">${device.name}</div>
+<div class="device-name">${device.name} <span style="cursor:pointer" onclick="showEsp32Modal(${device.id})">⚙️</span></div>
 <div class="device-info">${device.sensor_count} sensor${device.sensor_count !== 1 ? 's' : ''} | ${device.active_sensors} active</div>
+<div class="device-info" style="font-size: 11px;">Last reading: ${device.last_seen ? device.last_seen.substring(11,19) : 'never'}</div>
 <div class="device-actions" style="margin-bottom: 12px;" onclick="event.stopPropagation()">
-<button class="btn-small" onclick="showEsp32Modal(${device.id})">Edit Device</button>
-<button class="btn-small" onclick="showSensorModalForDevice(${device.id})">+ Add Sensor</button>
-<button class="btn-small" onclick="pullSensorsFromEsp32(${device.id})">Pull</button>
-<button class="btn-small" onclick="pushSensorsToEsp32(${device.id})">Push</button>
-<button class="btn-small" onclick="triggerEsp32Readings(${device.id})">↻ Refresh</button>
+<button class="btn-small" onclick="showSensorModalForDevice(${device.id})">➕ Sensor</button>
+<button class="btn-small ${!esp32LastPushed[device.id] ? 'btn-warning' : ''}" onclick="pullSensorsFromEsp32(${device.id})">⬇ Pull From Device${!esp32LastPushed[device.id] ? ' *' : ''}</button>
+<button class="btn-small" onclick="pushSensorsToEsp32(${device.id})">⬆ Push To Device</button>
 <button class="btn-delete" onclick="deleteEsp32(${device.id})">🗑</button>
 </div>
 ${sensors.length > 0 ? `
@@ -1836,6 +1871,7 @@ ${readingsMap[s.name] !== undefined ? readingsMap[s.name].toFixed(1) : '---'}
 </div>
 <div style="font-size: 11px; color: var(--text-secondary);">GPIO ${s.pin_number}</div>
 <div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">${s.sensor_type}</div>
+<div style="position: absolute; bottom: 8px; right: 8px;"><button class="btn-delete" style="padding:4px;font-size:12px;" onclick="event.stopPropagation();deleteSensor(${s.id},${s.esp32_id})">🗑</button></div>
 </div>
 `).join('')}
 </div>
@@ -1851,7 +1887,7 @@ document.getElementById('sensorModalTitle').textContent = 'Add Sensor';
 document.getElementById('sensorSaveBtn').textContent = 'Add';
 document.getElementById('sensorName').value = '';
 document.getElementById('sensorType').value = 'analog';
-document.getElementById('sensorPin').value = '';
+document.getElementById('sensorPin').value = '34';
 document.getElementById('sensorPinMode').value = 'INPUT';
 document.getElementById('sensorOffset').value = '0';
 document.getElementById('sensorScale').value = '1';
@@ -1883,21 +1919,42 @@ document.getElementById('sensorName').focus();
             const name = document.getElementById('esp32Name').value.trim();
             const ip_address = document.getElementById('esp32Ip').value.trim();
             const mac_address = document.getElementById('esp32Mac').value.trim().toUpperCase();
+            const update_rate = parseInt(document.getElementById('esp32UpdateRate').value) || 30;
             
             if (!name) { showAlert('Device name required'); return; }
             
-            const res = await fetch('/api/sensors/esp32', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, ip_address, mac_address })
-            });
-            
-            if (res.ok) {
-                hideModals();
-                loadEsp32Devices();
+            if (editingEsp32Id) {
+                const res = await fetch('/api/sensors/esp32/' + editingEsp32Id, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, ip_address, update_rate })
+                });
+                
+                if (res.ok) {
+                    hideModals();
+                    loadEsp32Devices();
+                    try {
+                        await fetch('/api/sensors/esp32/' + editingEsp32Id + '/push', { method: 'POST' });
+                        esp32LastPushed[editingEsp32Id] = Date.now();
+                    } catch (e) { console.log('Push failed:', e); }
+                } else {
+                    const data = await res.json();
+                    showAlert(data.error || 'Failed to save device');
+                }
             } else {
-                const data = await res.json();
-                showAlert(data.error || 'Failed to save device');
+                const res = await fetch('/api/sensors/esp32', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, ip_address, mac_address, update_rate })
+                });
+                
+                if (res.ok) {
+                    hideModals();
+                    loadEsp32Devices();
+                } else {
+                    const data = await res.json();
+                    showAlert(data.error || 'Failed to save device');
+                }
             }
         }
         
@@ -1942,6 +1999,9 @@ document.getElementById('sensorName').focus();
 if (res.ok) {
 hideModals();
 loadEsp32Devices();
+if (!editingSensorId && currentEsp32Id) {
+esp32LastPushed[currentEsp32Id] = null;
+}
 } else {
 const data = await res.json();
 alert(data.error || 'Failed to save sensor');
@@ -1974,9 +2034,10 @@ currentEsp32Id = null;
 loadEsp32Devices();
 }
 
-async function deleteSensor(id) {
+async function deleteSensor(id, esp32Id) {
 if (!(await showConfirm('Delete this sensor?'))) return;
 await fetch('/api/sensors/' + id, { method: 'DELETE' });
+if (esp32Id) esp32LastPushed[esp32Id] = null;
 loadEsp32Devices();
 }
         
@@ -1991,6 +2052,7 @@ return;
 const data = await res.json();
 showAlert('Pulled ' + data.pulled + ' sensors successfully!');
 loadEsp32Devices();
+esp32LastPushed[id] = Date.now();
 } catch (e) {
 showAlert('Error pulling sensors: ' + e.message);
 }

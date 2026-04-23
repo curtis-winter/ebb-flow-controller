@@ -67,11 +67,8 @@ def column_exists(table: str, column: str) -> bool:
     """Check if a column exists in a table."""
     try:
         with db() as database:
-            result = database.fetch_one(f"PRAGMA table_info({table})")
-            if result:
-                columns = [row['name'] for row in database.fetch_all(f"PRAGMA table_info({table})")]
-                return column in columns
-            return False
+            columns = [row['name'] for row in database.fetch_all(f"PRAGMA table_info({table})")]
+            return column in columns
     except Exception:
         return False
 
@@ -112,15 +109,29 @@ def set_schema_version(version: int) -> None:
 def migrate_schema() -> None:
     """Run migrations to update the schema."""
     current_version = get_schema_version()
-
+    
     if current_version < 1:
         migrate_to_v1()
-
+    
     if current_version < 2:
         migrate_to_v2()
     
     if current_version < 3:
         migrate_to_v3()
+    
+    if current_version < 4:
+        migrate_to_v4()
+    
+    if current_version < 5:
+        migrate_to_v5()
+
+
+def migrate_to_v5() -> None:
+    """Add rack_id and shelf_id to sensor_readings."""
+    add_column_if_not_exists('sensor_readings', 'rack_id', 'INTEGER')
+    add_column_if_not_exists('sensor_readings', 'shelf_id', 'INTEGER')
+    set_schema_version(5)
+    print("Migrated to v5: Added rack_id/shelf_id to sensor_readings")
 
 
 def migrate_to_v3() -> None:
@@ -129,6 +140,13 @@ def migrate_to_v3() -> None:
     add_column_if_not_exists('esp32_sensors', 'shelf_id', 'INTEGER')
     set_schema_version(3)
     print("Migrated to v3: Added rack_id/shelf_id to esp32_sensors")
+
+
+def migrate_to_v4() -> None:
+    """Add update_rate to esp32_devices."""
+    add_column_if_not_exists('esp32_devices', 'update_rate', 'INTEGER DEFAULT 30')
+    set_schema_version(4)
+    print("Migrated to v4: Added update_rate to esp32_devices")
 
 
 def migrate_to_v1() -> None:
@@ -338,15 +356,16 @@ def migrate_to_v2() -> None:
     """Add ESP32 sensor configuration tables."""
     with db() as database:
         database.execute('''
-            CREATE TABLE IF NOT EXISTS esp32_devices (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT NOT NULL,
-                ip_address TEXT,
-                mac_address TEXT,
-                is_active INTEGER DEFAULT 1,
-                last_seen TIMESTAMP,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
+        CREATE TABLE IF NOT EXISTS esp32_devices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            ip_address TEXT,
+            mac_address TEXT,
+            is_active INTEGER DEFAULT 1,
+            last_seen TIMESTAMP,
+            update_rate INTEGER DEFAULT 30,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
         ''')
         
         database.execute('''

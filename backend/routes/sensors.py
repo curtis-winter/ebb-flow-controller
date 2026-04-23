@@ -3,10 +3,13 @@ Sensor management API routes.
 Provides CRUD operations for ESP32 devices and their sensors.
 """
 import os
+import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from flask import Blueprint, request, jsonify
 from backend.database import db
+
+logger = logging.getLogger(__name__)
 
 sensors_bp = Blueprint('sensors', __name__, url_prefix='/api/sensors')
 
@@ -181,7 +184,13 @@ def get_esp32_devices():
             FROM esp32_devices e
             ORDER BY e.name
         ''')
-        return jsonify([dict(d) for d in devices])
+        result = []
+        for d in devices:
+            dev = dict(d)
+            if dev.get('last_seen'):
+                dev['last_seen'] = convert_timezone(dev['last_seen'])
+            result.append(dev)
+        return jsonify(result)
 
 
 @sensors_bp.route('/esp32', methods=['POST'])
@@ -223,11 +232,15 @@ def update_esp32_device(esp32_id):
         updates = []
         params = []
         
-        for field in ['name', 'ip_address', 'is_active']:
+        for field in ['name', 'ip_address', 'is_active', 'update_rate']:
             if field in data:
                 value = data[field]
                 if field == 'is_active':
                     value = 1 if value else 0
+                elif field == 'update_rate':
+                    value = int(value)
+                    if value < 5: value = 5
+                    if value > 3600: value = 3600
                 updates.append(f'{field} = ?')
                 params.append(value)
         
@@ -314,8 +327,11 @@ def get_esp32_config(esp32_id):
             SELECT ssid, password FROM wifi_config WHERE is_default = 1 LIMIT 1
         ''')
         
+        update_rate = device['update_rate'] if 'update_rate' in device.keys() else 30
+        
         config = {
             'device_name': device['name'],
+            'update_rate': update_rate,
             'sensors': [dict(s) for s in sensors]
         }
         
@@ -341,9 +357,13 @@ def get_sensor_readings(esp32_id):
         
         if sensor_id:
             query = '''
-                SELECT r.id, r.value, r.timestamp, s.name as sensor_name, s.sensor_type
+                SELECT r.id, r.value, r.timestamp, s.name as sensor_name, s.sensor_type,
+                       COALESCE(rk.name, 'Unassigned') as rack_name,
+                       COALESCE(sh.name, 'Unassigned') as shelf_name
                 FROM sensor_readings r
                 LEFT JOIN esp32_sensors s ON r.sensor_id = s.id
+                LEFT JOIN racks rk ON r.rack_id = rk.id
+                LEFT JOIN shelves sh ON r.shelf_id = sh.id
                 WHERE r.esp32_id = ? AND r.sensor_id = ?
                 ORDER BY r.timestamp DESC
                 LIMIT ?
@@ -351,9 +371,13 @@ def get_sensor_readings(esp32_id):
             readings = database.fetch_all(query, (esp32_id, sensor_id, limit))
         else:
             query = '''
-                SELECT r.id, r.value, r.timestamp, s.name as sensor_name, s.sensor_type
+                SELECT r.id, r.value, r.timestamp, s.name as sensor_name, s.sensor_type,
+                       COALESCE(rk.name, 'Unassigned') as rack_name,
+                       COALESCE(sh.name, 'Unassigned') as shelf_name
                 FROM sensor_readings r
                 LEFT JOIN esp32_sensors s ON r.sensor_id = s.id
+                LEFT JOIN racks rk ON r.rack_id = rk.id
+                LEFT JOIN shelves sh ON r.shelf_id = sh.id
                 WHERE r.esp32_id = ?
                 ORDER BY r.timestamp DESC
                 LIMIT ?
@@ -365,7 +389,9 @@ def get_sensor_readings(esp32_id):
             'value': r['value'],
             'timestamp': convert_timezone(r['timestamp']),
             'sensor_name': r['sensor_name'] or 'Unknown',
-            'sensor_type': r['sensor_type'] or 'unknown'
+            'sensor_type': r['sensor_type'] or 'unknown',
+            'rack_name': r['rack_name'],
+            'shelf_name': r['shelf_name']
         } for r in readings])
 
 
@@ -430,7 +456,49 @@ def get_all_latest_readings():
         } for r in readings])
 
 
+@sensors_bp.route('/readings', methods=['GET'])
+def get_all_readings():
+    """Get all sensor readings across all ESP32 devices."""
+    limit = request.args.get('limit', 500, type=int)
+    
+    with db() as database:
+        readings = database.fetch_all('''
+            SELECT r.id, r.value, r.timestamp, 
+                   COALESCE(s.name, 'Unknown') as sensor_name, 
+                   COALESCE(s.sensor_type, 'unknown') as sensor_type, 
+                   s.pin_number,
+                   e.id as esp32_id, e.name as esp32_name,
+                   COALESCE(rk.name, 'Unassigned') as rack_name,
+                   COALESCE(sh.name, 'Unassigned') as shelf_name
+            FROM sensor_readings r
+            LEFT JOIN esp32_sensors s ON r.sensor_id = s.id
+            LEFT JOIN esp32_devices e ON r.esp32_id = e.id
+            LEFT JOIN racks rk ON r.rack_id = rk.id
+            LEFT JOIN shelves sh ON r.shelf_id = sh.id
+            ORDER BY r.timestamp DESC
+            LIMIT ?
+        ''', (limit,))
+        
+        return jsonify([{
+            'id': r['id'],
+            'value': r['value'],
+            'timestamp': convert_timezone(r['timestamp']),
+            'sensor_name': r['sensor_name'] or 'Unknown',
+            'sensor_type': r['sensor_type'] or 'unknown',
+            'pin_number': r['pin_number'],
+            'esp32_id': r['esp32_id'],
+            'esp32_name': r['esp32_name'] or 'Unknown',
+            'rack_name': r['rack_name'],
+            'shelf_name': r['shelf_name']
+        } for r in readings])
+
+
 @sensors_bp.route('/wifi', methods=['GET'])
+def get_wifi_configs():
+    """Get all WiFi configurations."""
+    with db() as database:
+        configs = database.fetch_all('SELECT id, ssid, is_default, created_at FROM wifi_config ORDER BY is_default DESC, ssid')
+        return jsonify([dict(c) for c in configs])
 
 
 @sensors_bp.route('/esp32/<int:esp32_id>/sensors', methods=['POST'])
@@ -535,6 +603,8 @@ def push_sensors_to_esp32(esp32_id):
         if not ip_address:
             return jsonify({'error': 'No IP address for device'}), 400
         
+        update_rate = device['update_rate'] if 'update_rate' in device.keys() else 30
+        
         sensors = database.fetch_all('''
             SELECT name, sensor_type, pin_number, pin_mode,
                    calibration_offset, calibration_scale
@@ -553,15 +623,25 @@ def push_sensors_to_esp32(esp32_id):
                 'calibration_scale': s['calibration_scale']
             })
         
+        config_payload = {
+            'device_name': device['name'],
+            'update_rate': update_rate,
+            'sensors': sensor_list
+        }
+        
         try:
+            logger.info(f"Pushing to ESP32 {ip_address}: {config_payload}")
             response = requests.post(
                 f'http://{ip_address}:80/api/sensors/config',
-                json={'sensors': sensor_list},
-                timeout=10
+                json=config_payload,
+                timeout=10,
+                headers={'Content-Type': 'application/json'}
             )
+            logger.info(f"Response: {response.status_code} {response.text}")
             response.raise_for_status()
             return jsonify({'status': 'ok', 'pushed': len(sensor_list)})
         except requests.RequestException as e:
+            logger.error(f"Push failed: {e}")
             return jsonify({'error': f'Failed to push to ESP32: {str(e)}'}), 500
 
 
@@ -588,9 +668,6 @@ def trigger_esp32_reading(esp32_id):
             return jsonify({'status': 'ok', 'message': 'Trigger sent to ESP32'})
         except requests.RequestException as e:
             return jsonify({'error': f'Failed to trigger ESP32: {str(e)}'}), 500
-    with db() as database:
-        configs = database.fetch_all('SELECT id, ssid, is_default, created_at FROM wifi_config ORDER BY is_default DESC, ssid')
-        return jsonify([dict(c) for c in configs])
 
 
 @sensors_bp.route('/wifi', methods=['POST'])
@@ -701,29 +778,32 @@ def _log_single_reading(sensor_name, value, esp32_id=None):
     with db() as database:
         if esp32_id:
             sensor = database.fetch_one('''
-                SELECT s.id, s.esp32_id, e.name as esp32_name
+                SELECT s.id, s.esp32_id, s.rack_id, s.shelf_id, e.name as esp32_name
                 FROM esp32_sensors s
                 JOIN esp32_devices e ON s.esp32_id = e.id
                 WHERE s.name = ? COLLATE NOCASE AND s.esp32_id = ?
             ''', (sensor_name, esp32_id))
         else:
             sensor = database.fetch_one('''
-                SELECT s.id, s.esp32_id, e.name as esp32_name
+                SELECT s.id, s.esp32_id, s.rack_id, s.shelf_id, e.name as esp32_name
                 FROM esp32_sensors s
                 JOIN esp32_devices e ON s.esp32_id = e.id
                 WHERE s.name = ? COLLATE NOCASE
             ''', (sensor_name,))
         
         if sensor:
-            esp32_id = sensor['esp32_id']
-            sensor_id = sensor['id']
+            sensor_dict = dict(sensor)
+            esp32_id = sensor_dict['esp32_id']
+            sensor_id = sensor_dict['id']
+            rack_id = sensor_dict.get('rack_id')
+            shelf_id = sensor_dict.get('shelf_id')
         else:
             return
         
         database.execute('''
-            INSERT INTO sensor_readings (esp32_id, sensor_id, value)
-            VALUES (?, ?, ?)
-        ''', (esp32_id, sensor_id, value))
+            INSERT INTO sensor_readings (esp32_id, sensor_id, value, rack_id, shelf_id)
+            VALUES (?, ?, ?, ?, ?)
+        ''', (esp32_id, sensor_id, value, rack_id, shelf_id))
         database.commit()
         
         database.execute('''
