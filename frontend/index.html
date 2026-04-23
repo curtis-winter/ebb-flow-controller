@@ -135,14 +135,13 @@
             <h1>FlowBoard</h1>
         </header>
         
-<div class="tabs"> 
+<div class="tabs">
 <button class="tab active" onclick="showTab('smart-devices')">Smart Devices</button>
 <button class="tab" onclick="showTab('sensors')">ESP32 Sensors</button>
 <button class="tab" onclick="showTab('grow-layout')">Grow Layout</button>
 <button class="tab" onclick="showTab('grow-schedule')">Grow Schedule</button>
-<button class="tab" onclick="showTab('readings')">Sensor Readings</button>
 <button class="tab" onclick="showTab('logs')">Log History</button>
-        </div>
+</div>
         
         <div id="tab-smart-devices" class="tab-content active">
             <div class="header-actions" style="margin-bottom: 20px;">
@@ -206,31 +205,7 @@
             <div id="esp32List"></div>
         </div>
 
-        <div id="tab-readings" class="tab-content">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
-                <h2>Sensor Readings</h2>
-                <div style="display: flex; gap: 12px; align-items: center;">
-                    <select id="readingsEsp32Select" onchange="loadReadings()" style="padding: 8px; background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border-card); border-radius: 4px; min-width: 150px;">
-                        <option value="">All Devices</option>
-                    </select>
-                    <button class="btn-secondary" onclick="loadReadings()">↻</button>
-                </div>
-            </div>
-            <div id="latestReadings" style="margin-bottom: 24px; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px;"></div>
-            <h3 style="margin-bottom: 12px;">History</h3>
-            <div id="readingsTableContainer" style="overflow: auto; max-height: 400px; background: var(--bg-card); border-radius: 8px;">
-                <table id="readingsTable" style="width: 100%; border-collapse: collapse;">
-                    <thead style="position: sticky; top: 0; z-index: 1; background: var(--bg-card);">
-                        <tr>
-                            <th style="padding: 10px; text-align: left;">Sensor</th>
-                            <th style="padding: 10px; text-align: left;">Value</th>
-                            <th style="padding: 10px; text-align: left;">Time</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
-            </div>
-        </div>
+
 
         <div id="tab-logs" class="tab-content">
 <div style="margin: 20px;">
@@ -589,8 +564,8 @@
 </div>
 </div>
 </div>
-
-    <script>
+</div>
+<script>
         let devices = [];
         let racks = [];
         let currentRackId = null;
@@ -638,89 +613,18 @@
                 tabElement.classList.add('active');
             }
             
-            // Load content for specific tabs
-            if (tabId === 'grow-layout') { loadRacks(); loadDevices(); renderAvailableDevices(); renderAvailableSensors(); }
-            if (tabId === 'grow-schedule') { loadSchedules(); }
-            if (tabId === 'logs') { loadLogs(); }
-            if (tabId === 'sensors') { loadEsp32Devices(); loadWifiNetworks(); }
-            if (tabId === 'readings') { loadReadings(); }
-        }
+// Load content for specific tabs
+if (tabId === 'grow-layout') { loadRacks(); loadDevices(); renderAvailableDevices(); renderAvailableSensors(); }
+if (tabId === 'grow-schedule') { loadSchedules(); }
+if (tabId === 'logs') { loadLogs(); }
+if (tabId === 'sensors') { loadEsp32Devices(); loadWifiNetworks(); }
+}
 
-        let sensorReadings = [];
-        let readingsTimer = null;
-
-        async function loadReadings() {
-            const esp32Id = document.getElementById('readingsEsp32Select').value;
-            let url = '/api/sensors/readings/latest';
-            if (esp32Id) url = '/api/sensors/esp32/' + esp32Id + '/latest';
-            
-            try {
-                const res = await fetch(url);
-                sensorReadings = await res.json();
-                renderLatestReadings();
-                renderReadingsTable();
-                populateReadingsEsp32Select();
-            } catch (e) {
-                console.error('Failed to load readings:', e);
-            }
-        }
-
-        function renderLatestReadings() {
-            const div = document.getElementById('latestReadings');
-            if (sensorReadings.length === 0) {
-                div.innerHTML = '<p style="color: var(--text-secondary);">No readings yet. ESP32 must send data first.</p>';
-                return;
-            }
-            div.innerHTML = sensorReadings.map(r => `
-                <div style="background: var(--bg-card); border: 1px solid var(--border-card); border-radius: 8px; padding: 16px;">
-                    <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 4px;">${r.esp32_name || 'ESP32'} - ${r.sensor_name}</div>
-                    <div style="font-size: 32px; font-weight: 600; color: var(--accent-gold);">${r.value.toFixed(1)}</div>
-                    <div style="font-size: 12px; color: var(--text-secondary); margin-top: 8px;">${formatTimestamp(r.timestamp)}</div>
-                </div>
-            `).join('');
-        }
-
-        function renderReadingsTable() {
-            const tbody = document.querySelector('#readingsTable tbody');
-            if (!tbody) return;
-            tbody.innerHTML = sensorReadings.map(r => `
-                <tr style="border-bottom: 1px solid var(--border-card);">
-                    <td style="padding: 10px;">${r.sensor_name}</td>
-                    <td style="padding: 10px; font-weight: 600;">${r.value.toFixed(2)}</td>
-                    <td style="padding: 10px; color: var(--text-secondary);">${formatTimestamp(r.timestamp)}</td>
-                </tr>
-            `).join('');
-        }
-
-        async function populateReadingsEsp32Select() {
-            const select = document.getElementById('readingsEsp32Select');
-            if (select.options.length > 1) return;
-            
-            try {
-                const res = await fetch('/api/sensors/esp32');
-                const devices = await res.json();
-                devices.forEach(d => {
-                    select.innerHTML += `<option value="${d.id}">${d.name}</option>`;
-                });
-            } catch (e) {}
-        }
-
-        function formatTimestamp(ts) {
-            if (!ts) return '--';
-            const d = new Date(ts);
-            return d.toLocaleTimeString();
-        }
-
-        function startReadingsAutoRefresh() {
-            if (readingsTimer) clearInterval(readingsTimer);
-            readingsTimer = setInterval(() => {
-                if (document.getElementById('tab-readings').classList.contains('active')) {
-                    loadReadings();
-                }
-            }, 10000);
-        }
-
-        startReadingsAutoRefresh();
+function formatTimestamp(ts) {
+if (!ts) return '--';
+const d = new Date(ts);
+return d.toLocaleTimeString();
+}
 
 function showScheduleModal() {
 updateScheduleTargetOptions();
@@ -1876,97 +1780,84 @@ else { const data = await res.json(); showAlert(data.error || 'Failed to add dev
             document.getElementById('esp32Name').focus();
         }
         
-        async function loadEsp32Devices() {
-            const res = await fetch('/api/sensors/esp32');
-            esp32Devices = await res.json();
-            renderEsp32List();
-        }
-        
-        function renderEsp32List() {
-            const list = document.getElementById('esp32List');
-            if (esp32Devices.length === 0) {
-                list.innerHTML = '<div class="empty-state"><h2>No ESP32 Devices</h2><p>Add an ESP32 device to configure its sensors</p></div>';
-                return;
-            }
-            list.innerHTML = esp32Devices.map(d => `
-                <div class="device-card" style="cursor: pointer;" onclick="selectEsp32(${d.id})">
-                    <div class="device-header">
-                        <span class="device-icon">🌡️</span>
-                        <span class="device-status">${d.is_active ? 'Active' : 'Inactive'}</span>
-                    </div>
-                    <div class="device-name">${d.name}</div>
-                    <div class="device-info">${d.sensor_count} sensor${d.sensor_count !== 1 ? 's' : ''} | ${d.active_sensors} active</div>
-                    <div class="device-actions" onclick="event.stopPropagation()">
-                        <button class="btn-small" onclick="showEsp32Modal(${d.id})">Edit</button>
-                        <button class="btn-small" onclick="pullSensorsFromEsp32(${d.id})">Pull</button>
-                        <button class="btn-small" onclick="pushSensorsToEsp32(${d.id})">Push</button>
-                        <button class="btn-small" onclick="triggerEsp32Readings(${d.id})">↻ Refresh</button>
-                        <button class="btn-small" onclick="downloadEsp32Config(${d.id})">Download Config</button>
-                        <button class="btn-delete" onclick="deleteEsp32(${d.id})">🗑</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-        
-        async function selectEsp32(id) {
-            currentEsp32Id = id;
-            const device = esp32Devices.find(d => d.id === id);
-            if (!device) return;
-            
-            document.getElementById('esp32List').innerHTML = `
-                <div style="margin-bottom: 20px;">
-                    <button class="btn-secondary" onclick="loadEsp32Devices()">← Back</button>
-                    <button class="btn-primary" onclick="showSensorModal()">+ Add Sensor</button>
-                </div>
-                <h3 style="margin-bottom: 16px;">${device.name} - Sensors</h3>
-                <div id="sensorList"></div>
-            `;
-            await loadSensors(id);
-        }
-        
-        async function loadSensors(esp32Id) {
-            const res = await fetch('/api/sensors?esp32_id=' + esp32Id);
-            const sensors = await res.json();
-            renderSensorList(sensors);
-        }
-        
-function renderSensorList(sensors) {
-            const list = document.getElementById('sensorList');
-            if (!list) return;
-            
-            if (sensors.length === 0) {
-                list.innerHTML = '<p style="color: var(--text-secondary);">No sensors configured. Add a sensor to get started.</p>';
-                return;
-            }
-            
-            list.innerHTML = sensors.map(s => `
-                <div class="schedule-card draggable-sensor" style="margin-bottom: 12px; cursor: grab;" draggable="true" data-sensor-id="${s.id}" data-sensor-name="${s.name}">
-                    <div class="schedule-info">
-                        <div class="schedule-name">
-                            <span class="device-status ${s.is_enabled ? 'on' : 'off'}">${s.is_enabled ? 'ON' : 'OFF'}</span>
-                            ${s.name}
-                        </div>
-                        <div class="schedule-details">
-                            <span>Type: ${s.sensor_type}</span>
-                            <span>GPIO: ${s.pin_number}</span>
-                            ${s.shelf_name ? '<span>📍 ' + s.shelf_name + '</span>' : ''}
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 8px; margin-top: 8px;">
-                        <button class="btn-small" onclick="showEditSensorModal(${s.id}, '${s.name.replace(/'/g, "\\'")}', '${s.sensor_type}', ${s.pin_number})">Edit</button>
-                        <button class="btn-delete" onclick="deleteSensor(${s.id})">🗑</button>
-                    </div>
-                </div>
-            `).join('');
-            
-            // Add drag event listeners
-            list.querySelectorAll('.draggable-sensor').forEach(el => {
-                el.addEventListener('dragstart', e => {
-                    e.dataTransfer.setData('sensorId', el.dataset.sensorId);
-                    e.dataTransfer.setData('sensorName', el.dataset.sensorName);
+async function loadEsp32Devices() {
+const res = await fetch('/api/sensors/esp32');
+esp32Devices = await res.json();
+renderEsp32List();
+}
+
+async function renderEsp32List() {
+const list = document.getElementById('esp32List');
+if (esp32Devices.length === 0) {
+list.innerHTML = '<div class="empty-state"><h2>No ESP32 Devices</h2><p>Add an ESP32 device to configure its sensors</p></div>';
+return;
+}
+
+// Fetch sensors and readings for all devices
+const sensorsPromises = esp32Devices.map(async (d) => {
+const sensorsRes = await fetch(`/api/sensors?esp32_id=${d.id}`);
+const sensors = await sensorsRes.json();
+const readingsRes = await fetch(`/api/sensors/esp32/${d.id}/latest`);
+const readings = await readingsRes.json();
+const readingsMap = {};
+readings.forEach(r => { readingsMap[r.sensor_name] = r.value; });
+return { device: d, sensors, readingsMap };
 });
-        });
-        }
+
+const deviceData = await Promise.all(sensorsPromises);
+
+list.innerHTML = deviceData.map(({ device, sensors, readingsMap }) => `
+<div class="device-card">
+<div class="device-header">
+<span class="device-icon">🌡️</span>
+<span class="device-status">${device.is_active ? 'Active' : 'Inactive'}</span>
+</div>
+<div class="device-name">${device.name}</div>
+<div class="device-info">${device.sensor_count} sensor${device.sensor_count !== 1 ? 's' : ''} | ${device.active_sensors} active</div>
+<div class="device-actions" style="margin-bottom: 12px;" onclick="event.stopPropagation()">
+<button class="btn-small" onclick="showEsp32Modal(${device.id})">Edit Device</button>
+<button class="btn-small" onclick="showSensorModalForDevice(${device.id})">+ Add Sensor</button>
+<button class="btn-small" onclick="pullSensorsFromEsp32(${device.id})">Pull</button>
+<button class="btn-small" onclick="pushSensorsToEsp32(${device.id})">Push</button>
+<button class="btn-small" onclick="triggerEsp32Readings(${device.id})">↻ Refresh</button>
+<button class="btn-delete" onclick="deleteEsp32(${device.id})">🗑</button>
+</div>
+${sensors.length > 0 ? `
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-card);">
+${sensors.map(s => `
+<div class="device-card" style="cursor: pointer;" onclick="showEditSensorModal(${s.id})">
+<div class="device-header">
+<span class="device-icon">🌡️</span>
+<span class="device-status ${s.is_enabled ? 'on' : 'off'}" style="font-size: 10px;">${s.is_enabled ? 'ON' : 'OFF'}</span>
+</div>
+<div style="font-size: 12px; font-weight: 600; margin: 4px 0 8px 0;">${s.name}</div>
+<div style="font-size: 20px; font-weight: 600; color: var(--accent-gold); margin: 8px 0;">
+${readingsMap[s.name] !== undefined ? readingsMap[s.name].toFixed(1) : '---'}
+</div>
+<div style="font-size: 11px; color: var(--text-secondary);">GPIO ${s.pin_number}</div>
+<div style="font-size: 10px; color: var(--text-secondary); margin-top: 2px;">${s.sensor_type}</div>
+</div>
+`).join('')}
+</div>
+` : '<p style="color: var(--text-secondary); margin-top: 16px;">No sensors configured. Click "+ Add Sensor" to add one.</p>'}
+</div>
+`).join('');
+}
+        
+function showSensorModalForDevice(esp32Id) {
+currentEsp32Id = esp32Id;
+editingSensorId = null;
+document.getElementById('sensorModalTitle').textContent = 'Add Sensor';
+document.getElementById('sensorSaveBtn').textContent = 'Add';
+document.getElementById('sensorName').value = '';
+document.getElementById('sensorType').value = 'analog';
+document.getElementById('sensorPin').value = '';
+document.getElementById('sensorPinMode').value = 'INPUT';
+document.getElementById('sensorOffset').value = '0';
+document.getElementById('sensorScale').value = '1';
+document.getElementById('sensorModal').classList.add('active');
+document.getElementById('sensorName').focus();
+}
 
         function showSensorModal(sensor) {
             editingSensorId = sensor ? sensor.id : null;
@@ -2048,89 +1939,92 @@ function renderSensorList(sensors) {
                 });
             }
             
-            if (res.ok) {
-                hideModals();
-                loadSensors(currentEsp32Id);
-            } else {
-                const data = await res.json();
-                showAlert(data.error || 'Failed to save sensor');
-            }
-        }
+if (res.ok) {
+hideModals();
+loadEsp32Devices();
+} else {
+const data = await res.json();
+alert(data.error || 'Failed to save sensor');
+}
+}
+
+async function showEditSensorModal(id) {
+const res = await fetch('/api/sensors/' + id);
+const sensor = await res.json();
+if (!sensor) return;
+
+currentEsp32Id = sensor.esp32_id;
+editingSensorId = id;
+document.getElementById('sensorModalTitle').textContent = 'Edit Sensor';
+document.getElementById('sensorSaveBtn').textContent = 'Save';
+document.getElementById('sensorName').value = sensor.name || '';
+document.getElementById('sensorType').value = sensor.sensor_type || 'analog';
+document.getElementById('sensorPin').value = sensor.pin_number || '';
+document.getElementById('sensorPinMode').value = sensor.pin_mode || 'INPUT';
+document.getElementById('sensorOffset').value = sensor.calibration_offset || '0';
+document.getElementById('sensorScale').value = sensor.calibration_scale || '1';
+document.getElementById('sensorModal').classList.add('active');
+document.getElementById('sensorName').focus();
+}
+
+async function deleteEsp32(id) {
+if (!(await showConfirm('Delete this device and all its sensors?'))) return;
+await fetch('/api/sensors/esp32/' + id, { method: 'DELETE' });
+currentEsp32Id = null;
+loadEsp32Devices();
+}
+
+async function deleteSensor(id) {
+if (!(await showConfirm('Delete this sensor?'))) return;
+await fetch('/api/sensors/' + id, { method: 'DELETE' });
+loadEsp32Devices();
+}
         
-        async function deleteEsp32(id) {
-            if (!(await showConfirm('Delete this device and all its sensors?'))) return;
-            await fetch('/api/sensors/esp32/' + id, { method: 'DELETE' });
-            currentEsp32Id = null;
-            loadEsp32Devices();
-        }
+async function pullSensorsFromEsp32(id) {
+showAlert('Pulling sensors from ESP32...', 'info');
+try {
+const res = await fetch('/api/sensors/esp32/' + id + '/pull', { method: 'POST' });
+if (!res.ok) {
+showAlert('Failed to pull sensors from ESP32');
+return;
+}
+const data = await res.json();
+showAlert('Pulled ' + data.pulled + ' sensors successfully!');
+loadEsp32Devices();
+} catch (e) {
+showAlert('Error pulling sensors: ' + e.message);
+}
+}
+
+async function pushSensorsToEsp32(id) {
+showAlert('Pushing sensors to ESP32...', 'info');
+try {
+const res = await fetch('/api/sensors/esp32/' + id + '/push', { method: 'POST' });
+if (!res.ok) {
+showAlert('Failed to push sensors to ESP32');
+return;
+}
+const data = await res.json();
+showAlert('Pushed ' + data.pushed + ' sensors successfully!');
+} catch (e) {
+showAlert('Error pushing sensors: ' + e.message);
+}
+}
         
-        async function deleteSensor(id) {
-            if (!(await showConfirm('Delete this sensor?'))) return;
-            await fetch('/api/sensors/' + id, { method: 'DELETE' });
-            loadSensors(currentEsp32Id);
-        }
-        
-        async function downloadEsp32Config(id) {
-            const res = await fetch('/api/sensors/esp32/' + id + '/config');
-            if (!res.ok) {
-                showAlert('Failed to generate config');
-                return;
-            }
-            const config = await res.json();
-            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'esp32_config_' + config.device_name.replace(/\s+/g, '_') + '.json';
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-        
-        async function pullSensorsFromEsp32(id) {
-            showAlert('Pulling sensors from ESP32...', 'info');
-            try {
-                const res = await fetch('/api/sensors/esp32/' + id + '/pull', { method: 'POST' });
-                if (!res.ok) {
-                    showAlert('Failed to pull sensors from ESP32');
-                    return;
-                }
-                const data = await res.json();
-                showAlert('Pulled ' + data.pulled + ' sensors successfully!');
-                loadEsp32Devices();
-            } catch (e) {
-                showAlert('Error pulling sensors: ' + e.message);
-            }
-        }
-        
-        async function pushSensorsToEsp32(id) {
-            showAlert('Pushing sensors to ESP32...', 'info');
-            try {
-                const res = await fetch('/api/sensors/esp32/' + id + '/push', { method: 'POST' });
-                if (!res.ok) {
-                    showAlert('Failed to push sensors to ESP32');
-                    return;
-                }
-                const data = await res.json();
-                showAlert('Pushed ' + data.pushped + ' sensors successfully!');
-            } catch (e) {
-                showAlert('Error pushing sensors: ' + e.message);
-            }
-        }
-        
-        async function triggerEsp32Readings(id) {
-            showAlert('Triggering sensor refresh...', 'info');
-            try {
-                const res = await fetch('/api/sensors/esp32/' + id + '/trigger', { method: 'POST' });
-                if (!res.ok) {
-                    showAlert('Failed to trigger ESP32');
-                    return;
-                }
-                showAlert('Reading triggered! Data should arrive shortly.');
-                setTimeout(() => loadReadings(), 3000);
-            } catch (e) {
-                showAlert('Error triggering ESP32: ' + e.message);
-            }
-        }
+async function triggerEsp32Readings(id) {
+showAlert('Triggering sensor refresh...', 'info');
+try {
+const res = await fetch('/api/sensors/esp32/' + id + '/trigger', { method: 'POST' });
+if (!res.ok) {
+showAlert('Failed to trigger ESP32');
+return;
+}
+showAlert('Reading triggered! Data should arrive shortly.');
+setTimeout(() => loadEsp32Devices(), 3000);
+} catch (e) {
+showAlert('Error triggering ESP32: ' + e.message);
+}
+}
     </script>
 </body>
 </html>
