@@ -2,12 +2,12 @@
 Sensor management API routes.
 Provides CRUD operations for ESP32 devices and their sensors.
 """
-import os
 import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from flask import Blueprint, request, jsonify
 from backend.database import db
+from backend.constants import TZ_NAME
 
 logger = logging.getLogger(__name__)
 
@@ -19,11 +19,10 @@ def convert_timezone(timestamp_str):
     if not timestamp_str:
         return timestamp_str
     try:
-        tz = os.environ.get('TZ', 'America/Edmonton')
         dt = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00'))
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=ZoneInfo('UTC'))
-        local_dt = dt.astimezone(ZoneInfo(tz))
+        local_dt = dt.astimezone(ZoneInfo(TZ_NAME))
         return local_dt.strftime('%Y-%m-%d %H:%M:%S')
     except Exception:
         return timestamp_str
@@ -38,40 +37,29 @@ SENSOR_TYPES = ['analog', 'digital', 'ds18b20', 'dht11', 'dht22', 'bme280', 'cap
 
 @sensors_bp.route('', methods=['GET'])
 def get_sensors():
-    esp32_id = request.args.get('esp32_id')
-    shelf_id = request.args.get('shelf_id')
+    esp32_id = request.args.get('esp32_id', type=int)
+    shelf_id = request.args.get('shelf_id', type=int)
     with db() as database:
+        query = '''
+            SELECT s.*, e.name as esp32_name, r.name as rack_name, sh.name as shelf_name
+            FROM esp32_sensors s 
+            LEFT JOIN esp32_devices e ON s.esp32_id = e.id 
+            LEFT JOIN racks r ON s.rack_id = r.id
+            LEFT JOIN shelves sh ON s.shelf_id = sh.id
+            WHERE 1=1
+        '''
+        params = []
         if esp32_id:
-            sensors = database.fetch_all('''
-                SELECT s.*, e.name as esp32_name, r.name as rack_name, sh.name as shelf_name
-                FROM esp32_sensors s 
-                LEFT JOIN esp32_devices e ON s.esp32_id = e.id 
-                LEFT JOIN racks r ON s.rack_id = r.id
-                LEFT JOIN shelves sh ON s.shelf_id = sh.id
-                WHERE s.esp32_id = ?
-                ORDER BY s.pin_number
-            ''', (esp32_id,))
+            query += ' AND s.esp32_id = ?'
+            params.append(esp32_id)
         elif shelf_id:
-            sensors = database.fetch_all('''
-                SELECT s.*, e.name as esp32_name, r.name as rack_name, sh.name as shelf_name
-                FROM esp32_sensors s 
-                LEFT JOIN esp32_devices e ON s.esp32_id = e.id 
-                LEFT JOIN racks r ON s.rack_id = r.id
-                LEFT JOIN shelves sh ON s.shelf_id = sh.id
-                WHERE s.shelf_id = ?
-                ORDER BY s.pin_number
-            ''', (shelf_id,))
-        else:
-            sensors = database.fetch_all('''
-                SELECT s.*, e.name as esp32_name, r.name as rack_name, sh.name as shelf_name
-                FROM esp32_sensors s 
-                LEFT JOIN esp32_devices e ON s.esp32_id = e.id 
-                LEFT JOIN racks r ON s.rack_id = r.id
-                LEFT JOIN shelves sh ON s.shelf_id = sh.id
-                ORDER BY e.name, s.pin_number
-            ''')
+            query += ' AND s.shelf_id = ?'
+            params.append(shelf_id)
+        
+        query += ' ORDER BY e.name, s.pin_number' if not esp32_id and not shelf_id else ' ORDER BY s.pin_number'
+        
+        sensors = database.fetch_all(query, params)
         return jsonify([dict(s) for s in sensors])
-    return jsonify([])
 
 
 @sensors_bp.route('', methods=['POST'])
@@ -85,32 +73,49 @@ def create_sensor():
     pin_mode = data.get('pin_mode', 'INPUT')
     
     if not esp32_id:
+        logger.warning("create_sensor: esp32_id required")
         return jsonify({'error': 'esp32_id required'}), 400
     if not name:
+        logger.warning("create_sensor: name required")
         return jsonify({'error': 'name required'}), 400
     if not sensor_type:
+        logger.warning("create_sensor: sensor_type required")
         return jsonify({'error': 'sensor_type required'}), 400
     if pin_number is None:
+        logger.warning("create_sensor: pin_number required")
         return jsonify({'error': 'pin_number required'}), 400
     
     if sensor_type not in SENSOR_TYPES:
+        logger.warning(f"create_sensor: invalid sensor_type {sensor_type}")
         return jsonify({'error': f'Invalid sensor_type. Must be one of: {", ".join(SENSOR_TYPES)}'}), 400
     
-    with db() as database:
-        existing = database.fetch_one('''
-            SELECT id FROM esp32_sensors WHERE esp32_id = ? AND pin_number = ?
-        ''', (esp32_id, pin_number))
-        if existing:
-            return jsonify({'error': f'Pin {pin_number} already in use'}), 400
-        
-        cursor = database.execute('''
-            INSERT INTO esp32_sensors (esp32_id, name, sensor_type, pin_number, pin_mode)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (esp32_id, name, sensor_type, pin_number, pin_mode))
-        database.commit()
-        
-        sensor = database.fetch_one('SELECT * FROM esp32_sensors WHERE id = ?', (cursor.lastrowid,))
-        return jsonify(dict(sensor)), 201
+    try:
+        pin_number = int(pin_number)
+    except (ValueError, TypeError):
+        logger.warning(f"create_sensor: invalid pin_number {pin_number}")
+        return jsonify({'error': 'pin_number must be an integer'}), 400
+    
+    try:
+        with db() as database:
+            existing = database.fetch_one('''
+                SELECT id FROM esp32_sensors WHERE esp32_id = ? AND pin_number = ?
+            ''', (esp32_id, pin_number))
+            if existing:
+                logger.warning(f"create_sensor: pin {pin_number} already in use")
+                return jsonify({'error': f'Pin {pin_number} already in use'}), 400
+            
+            cursor = database.execute('''
+                INSERT INTO esp32_sensors (esp32_id, name, sensor_type, pin_number, pin_mode)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (esp32_id, name, sensor_type, pin_number, pin_mode))
+            database.commit()
+            
+            sensor = database.fetch_one('SELECT * FROM esp32_sensors WHERE id = ?', (cursor.lastrowid,))
+            logger.info(f"Created sensor {name} on pin {pin_number}")
+            return jsonify(dict(sensor)), 201
+    except Exception as e:
+        logger.error(f"create_sensor failed: {e}")
+        return jsonify({'error': 'Internal server error'}), 500
 
 
 @sensors_bp.route('/<int:sensor_id>', methods=['GET'])
@@ -141,14 +146,14 @@ def update_sensor(sensor_id):
         updates = []
         params = []
         
-        for field in ['name', 'sensor_type', 'pin_number', 'pin_mode', 'calibration_offset', 'calibration_scale', 'is_enabled', 'rack_id', 'shelf_id']:
+        for field in ['name', 'sensor_type', 'pin_number', 'pin_mode', 'calibration_offset', 'calibration_scale', 'is_enabled', 'rack_id', 'shelf_id', 'reservoir_id']:
             if field in data:
                 value = data[field]
                 if field in ('calibration_offset', 'calibration_scale'):
                     value = float(value)
                 elif field == 'is_enabled':
                     value = 1 if value else 0
-                elif field in ('rack_id', 'shelf_id'):
+                elif field in ('rack_id', 'shelf_id', 'reservoir_id'):
                     value = int(value) if value else None
                 updates.append(f'{field} = ?')
                 params.append(value)
@@ -775,38 +780,46 @@ def _log_single_reading(sensor_name, value, esp32_id=None):
     if not sensor_name or value is None:
         return
     
-    with db() as database:
-        if esp32_id:
-            sensor = database.fetch_one('''
-                SELECT s.id, s.esp32_id, s.rack_id, s.shelf_id, e.name as esp32_name
-                FROM esp32_sensors s
-                JOIN esp32_devices e ON s.esp32_id = e.id
-                WHERE s.name = ? COLLATE NOCASE AND s.esp32_id = ?
-            ''', (sensor_name, esp32_id))
-        else:
-            sensor = database.fetch_one('''
+    try:
+        value = float(value)
+    except (ValueError, TypeError) as e:
+        logger.warning(f"Invalid sensor value '{value}': {e}")
+        return
+    
+    try:
+        with db() as database:
+            query = '''
                 SELECT s.id, s.esp32_id, s.rack_id, s.shelf_id, e.name as esp32_name
                 FROM esp32_sensors s
                 JOIN esp32_devices e ON s.esp32_id = e.id
                 WHERE s.name = ? COLLATE NOCASE
-            ''', (sensor_name,))
-        
-        if sensor:
+            '''
+            params = [sensor_name]
+            if esp32_id:
+                query += ' AND s.esp32_id = ?'
+                params.append(esp32_id)
+            
+            sensor = database.fetch_one(query, params)
+            
+            if not sensor:
+                logger.warning(f"Sensor not found: {sensor_name}")
+                return
+            
             sensor_dict = dict(sensor)
             esp32_id = sensor_dict['esp32_id']
             sensor_id = sensor_dict['id']
             rack_id = sensor_dict.get('rack_id')
             shelf_id = sensor_dict.get('shelf_id')
-        else:
-            return
-        
-        database.execute('''
-            INSERT INTO sensor_readings (esp32_id, sensor_id, value, rack_id, shelf_id)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (esp32_id, sensor_id, value, rack_id, shelf_id))
-        database.commit()
-        
-        database.execute('''
-            UPDATE esp32_devices SET last_seen = CURRENT_TIMESTAMP WHERE id = ?
-        ''', (esp32_id,))
-        database.commit()
+            
+            database.execute('''
+                INSERT INTO sensor_readings (esp32_id, sensor_id, value, rack_id, shelf_id)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (esp32_id, sensor_id, value, rack_id, shelf_id))
+            database.commit()
+            
+            database.execute('''
+                UPDATE esp32_devices SET last_seen = CURRENT_TIMESTAMP WHERE id = ?
+            ''', (esp32_id,))
+            database.commit()
+    except Exception as e:
+        logger.error(f"Failed to log sensor reading for {sensor_name}: {e}")
