@@ -564,6 +564,21 @@ def pull_sensors_from_esp32(esp32_id):
             
             sensors = data.get('sensors', [])
             created = 0
+            updated = 0
+            
+            # First, delete sensors that exist in DB but not on device
+            db_sensors = database.fetch_all('''
+                SELECT id, pin_number FROM esp32_sensors WHERE esp32_id = ?
+            ''', (esp32_id,))
+            
+            device_pin_numbers = {s.get('pin_number') for s in sensors if s.get('pin_number') is not None}
+            
+            for db_sensor in db_sensors:
+                if db_sensor['pin_number'] not in device_pin_numbers:
+                    database.execute('''
+                        DELETE FROM esp32_sensors WHERE id = ?
+                    ''', (db_sensor['id'],))
+                    logger.info(f"Deleted sensor on pin {db_sensor['pin_number']} (not on device)")
             
             for s in sensors:
                 name = s.get('name', '').strip()
@@ -581,7 +596,7 @@ def pull_sensors_from_esp32(esp32_id):
                     database.execute('''
                         UPDATE esp32_sensors SET name = ?, sensor_type = ? WHERE id = ?
                     ''', (name, sensor_type, existing['id']))
-                    created += 1
+                    updated += 1
                 else:
                     database.execute('''
                         INSERT INTO esp32_sensors (esp32_id, name, sensor_type, pin_number, pin_mode)
@@ -590,8 +605,8 @@ def pull_sensors_from_esp32(esp32_id):
                     created += 1
             
             database.commit()
-            logger.info(f"Pulled {created} sensors from ESP32")
-            return jsonify({'status': 'ok', 'pulled': created, 'total': len(sensors)})
+            logger.info(f"Pulled {created} new, {updated} updated sensors from ESP32")
+            return jsonify({'status': 'ok', 'created': created, 'updated': updated, 'total': len(sensors)})
         except requests.RequestException as e:
             logger.error(f"Failed to pull sensors from ESP32: {e}")
             return jsonify({'error': f'Failed to connect to ESP32: {str(e)}'}), 500

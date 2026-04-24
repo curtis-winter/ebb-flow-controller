@@ -2189,7 +2189,8 @@ async function pullSensorsFromEsp32(id) {
                 showAlert('Failed to pull sensors: ' + (data.error || 'Unknown error'), 'error');
                 return;
             }
-            showAlert('Pulled ' + data.pulled + ' sensors successfully!');
+            let msg = `Pulled ${data.created} new, ${data.updated} updated sensors!`;
+            showAlert(msg, 'success');
             loadEsp32Devices();
             esp32LastPushed[id] = Date.now();
         } catch (e) {
