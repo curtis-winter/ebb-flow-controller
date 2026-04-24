@@ -11,12 +11,9 @@ def get_account_credentials(account_id: int) -> Optional[Credentials]:
     """Get Kasa credentials for an account."""
     if not account_id:
         return None
-        
+    
     from cryptography.fernet import Fernet
     import os
-    
-    if not account_id:
-        return None
     
     # Get encryption key
     if os.path.exists('/data/encryption.key'):

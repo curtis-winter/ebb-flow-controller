@@ -1131,7 +1131,7 @@ canvas.innerHTML = html;
         }
         
         function renderReservoir(res, comps) {
-            const aerators = comps.filter(c => c.component_type === 'aerator');
+            const aerators = filterComponents(comps, 'aerator');
             const sensors = res.sensors || [];
             return `
                 <div class="reservoir-item" data-id="${res.id}" data-type="reservoir">
@@ -1159,9 +1159,13 @@ canvas.innerHTML = html;
             `;
         }
         
+        function filterComponents(comps, type) {
+            return comps.filter(c => c.component_type === type);
+        }
+        
         function renderShelf(shelf, comps) {
-            const pumps = comps.filter(c => c.component_type === 'pump');
-            const lights = comps.filter(c => c.component_type === 'light');
+            const pumps = filterComponents(comps, 'pump');
+            const lights = filterComponents(comps, 'light');
             const sensors = shelf.sensors || [];
             return `
                 <div class="shelf-item" data-id="${shelf.id}" data-type="shelf">
@@ -2285,8 +2289,8 @@ if (shelf) {
                     const shelfComponents = components.filter(c => c.parent_type === 'shelf' && c.parent_id === shelf.id);
                     const shelfSensors = shelf.sensors || [];
                     
-                    const shelfLights = shelfComponents.filter(c => c.component_type === 'light');
-                    const shelfPumps = shelfComponents.filter(c => c.component_type === 'pump');
+                    const shelfLights = filterComponents(shelfComponents, 'light');
+                    const shelfPumps = filterComponents(shelfComponents, 'pump');
                     
                     html += '<div style="background: #1e293b; border-radius: 8px; padding: 12px; margin-bottom: ' + (i < sortedShelves.length - 1 ? '16px' : '0') + '; border: 1px solid #334155; display: flex; flex-direction: column; gap: 10px;">';
                     

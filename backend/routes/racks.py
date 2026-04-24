@@ -2,7 +2,10 @@
 Rack routes for FlowBoard.
 """
 from flask import jsonify, request
+import logging
 from backend.database import db, Database
+
+logger = logging.getLogger(__name__)
 
 
 def _get_racks():
@@ -313,15 +316,18 @@ def register_routes(app):
         parent_id = data.get('parent_id')
         component_type = data.get('component_type')
         
-        with db() as database:
-            if name is not None:
-                database.execute('UPDATE components SET name = ? WHERE id = ?', (name, component_id))
-            if device_id is not None:
-                database.execute('UPDATE components SET device_id = ? WHERE id = ?', (device_id, component_id))
-            if parent_type is not None and parent_id is not None:
-                database.execute('UPDATE components SET parent_type = ?, parent_id = ? WHERE id = ?', (parent_type, parent_id, component_id))
-            if component_type is not None:
-                database.execute('UPDATE components SET component_type = ? WHERE id = ?', (component_type, component_id))
-            database.commit()
-        
-        return jsonify({'success': True})
+        try:
+            with db() as database:
+                if name is not None:
+                    database.execute('UPDATE components SET name = ? WHERE id = ?', (name, component_id))
+                if device_id is not None:
+                    database.execute('UPDATE components SET device_id = ? WHERE id = ?', (device_id, component_id))
+                if parent_type is not None and parent_id is not None:
+                    database.execute('UPDATE components SET parent_type = ?, parent_id = ? WHERE id = ?', (parent_type, parent_id, component_id))
+                if component_type is not None:
+                    database.execute('UPDATE components SET component_type = ? WHERE id = ?', (component_type, component_id))
+                database.commit()
+            return jsonify({'success': True})
+        except Exception as e:
+            logger.error(f"Failed to update component {component_id}: {e}")
+            return jsonify({'error': 'Failed to update component'}), 500
