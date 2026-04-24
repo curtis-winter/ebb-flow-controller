@@ -4,8 +4,8 @@
 
 ```bash
 docker compose up --build -d  # Build and start
-docker logs flowboard        # View logs
-docker compose down          # Stop
+docker logs flowboard         # View logs
+docker compose down           # Stop
 ```
 
 ## Key Details
@@ -55,12 +55,15 @@ rm data/devices.db && docker compose up --build -d
 - Activity logging for all device state changes
 - ESP32 sensor integration with configurable read intervals
 - Rack/shelf organization for devices and sensors
-- Event logging for all device state changes
+- Drag-and-drop component management
+- Component type changes on drag (light → pump → aerator)
 
 ## Scheduler
 
 ### Design (v2)
+
 The scheduler supports rack/shelf/device level scheduling:
+
 - **Target Types**: `rack`, `shelf`, `device`
 - **Schedule Types**:
   - `on` - Turn on at specific time
@@ -69,14 +72,16 @@ The scheduler supports rack/shelf/device level scheduling:
   - `cycle` - Cycle on/off continuously (placeholder)
 
 ### API Endpoints
+
 ```
-GET    /api/schedules              - List all schedules
-POST   /api/schedules              - Create new schedule
-PUT    /api/schedules/<id>         - Update schedule
-DELETE /api/schedules/<id>         - Delete schedule
+GET /api/schedules - List all schedules
+POST /api/schedules - Create new schedule
+PUT /api/schedules/<id> - Update schedule
+DELETE /api/schedules/<id> - Delete schedule
 ```
 
 ### Schedule Payload
+
 ```json
 {
   "name": "Morning Lights",
@@ -95,6 +100,7 @@ DELETE /api/schedules/<id>         - Delete schedule
 ## Device Communication
 
 ### Discovery Method
+
 **UDP broadcast discovery** is used (port 9999). This requires `network_mode: host` in Docker.
 
 - ❌ KLAP V2: `Device response did not match our challenge` - authentication fails
@@ -112,6 +118,7 @@ plug = await Discover.discover_single(ip, credentials=credentials, port=9999)
 ```
 
 ### Performance
+
 - **Toggle latency**: ~3-4 seconds per toggle operation
 - **Device refresh**: Sequential with 2-second delays between devices
 - **Retry logic**: 4 retries with 1s, 2s, 5s delays
@@ -120,21 +127,27 @@ plug = await Discover.discover_single(ip, credentials=credentials, port=9999)
 ## Configuration
 
 ### Timezone
+
 Set via environment variable in docker-compose.yml:
+
 ```yaml
 environment:
   - TZ=America/Edmonton
 ```
 
 ### Retry Configuration
+
 Defined in `backend/constants.py`:
+
 ```python
 MAX_RETRIES = 4
 RETRY_DELAYS = [1.0, 2.0, 5.0]  # seconds
 ```
 
 ## Database Migrations
+
 The system includes automatic migrations that run on startup. To force a fresh database:
+
 ```bash
 rm data/devices.db
 docker compose up --build -d
@@ -143,31 +156,36 @@ docker compose up --build -d
 ## ESP32 Sensor Integration
 
 ### Features
+
 - Configurable read interval (5-3600 seconds)
 - Automatic sensor data logging with rack/shelf tracking
 - Real-time sensor readings dashboard
 - Sensor calibration support
 
 ### API Endpoints
+
 ```
-GET    /api/sensors/esp32              - List all ESP32 devices
-POST   /api/sensors/esp32              - Add ESP32 device
-POST   /api/sensors/readings           - Submit sensor reading
-GET    /api/sensors/readings           - Get sensor readings history
-GET    /api/sensors                    - List all sensors
+GET /api/sensors/esp32 - List all ESP32 devices
+POST /api/sensors/esp32 - Add ESP32 device
+POST /api/sensors/readings - Submit sensor reading
+GET /api/sensors/readings - Get sensor readings history
+GET /api/sensors - List all sensors
 ```
 
 ## UI Structure
 
 ### Main Tabs
+
 - **System Configuration** (sub-tabs: Smart Devices, ESP32 Sensors, Grow Layout, Grow Schedule)
 - **Log History** (sub-tabs: Smart Plugs, Sensor Readings)
 
 ### Layout
+
 - Single-page dashboard with tab-based navigation
 - Responsive design with card-based layout
 - Real-time updates for device states
 - Sticky tab navigation
+- Drag-and-drop component management between shelves/reservoirs
 
 ## Known Issues
 

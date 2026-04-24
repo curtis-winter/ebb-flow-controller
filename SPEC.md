@@ -1,20 +1,23 @@
-# Smart Outlet Controller - Specification
+# FlowBoard - EBB Flow Controller Specification
 
 ## Project Overview
+
 - **Project Name**: EBB Flow Controller (FlowBoard)
 - **Type**: Web Application (Docker deployed)
-- **Core Functionality**: Manage multiple Kasa brand WiFi smart outlets and ESP32 sensors through a web interface
+- **Core Functionality**: Manage Kasa smart outlets and ESP32 sensors through a web interface
 - **Target Users**: Home users managing smart home devices and grow systems
 
 ## Architecture
 
 ### Technology Stack
+
 - **Backend**: Python Flask + python-kasa + APScheduler
 - **Frontend**: Single-page HTML/JS with vanilla JS
 - **Database**: SQLite (for device persistence)
 - **Deployment**: Docker Compose (network_mode: host)
 
 ### Components
+
 1. **Backend API** (Flask): REST API to discover and control Kasa devices
 2. **Frontend**: Web dashboard to view and control outlets
 3. **Database**: Stores device configurations, schedules, sensor readings, and activity logs
@@ -22,23 +25,25 @@
 5. **ESP32 Integration**: Sensor data collection from custom hardware
 
 ### File Structure
+
 ```
 backend/
-├── app.py                    # Flask routes and main application
-├── constants.py              # Application constants (timezone, retries)
-├── database.py               # Database utilities, schema, migrations
+├── app.py                  # Flask application and main entry point
+├── constants.py            # Application constants (timezone, retries)
+├── database.py             # Database utilities, schema, migrations
 └── services/
     ├── __init__.py
-    ├── device_service.py     # Kasa device control logic with retry
-    ├── schedule_service.py   # APScheduler integration
+    ├── device_service.py   # Kasa device control logic with retry
+    ├── schedule_service.py # APScheduler integration
     ├── activity_log_service.py  # Activity logging
-    └── retry.py              # Retry decorator utilities
+    ├── retry.py            # Retry decorator utilities
+    └── helpers.py          # Shared helper functions
 routes/
-├── devices.py                # Device management routes
-├── schedules.py              # Schedule CRUD routes
-├── sensors.py                # ESP32 sensor routes
-├── racks.py                  # Rack/shelf organization routes
-└── logs.py                   # Activity log routes
+├── devices.py              # Device management routes
+├── schedules.py            # Schedule CRUD routes
+├── sensors.py              # ESP32 sensor routes
+├── racks.py                # Rack/shelf organization routes
+└── logs.py                 # Activity log routes
 ```
 
 ## Functionality Specification
@@ -46,19 +51,24 @@ routes/
 ### Core Features
 
 #### Device Discovery
+
 - Scan network for Kasa smart outlets using UDP broadcast (port 9999)
 - Add devices manually by IP address
 - Store discovered devices in database
 - HS300 power strips shown as separate child devices
 
 #### Device Control
+
 - Toggle outlet on/off
 - View current on/off state
 - View device info (name, IP, model, MAC)
 - Sequential refresh with real-time progress
+- Component type assignment (pump/light/aerator) with drag-and-drop type change
 
 #### Scheduler (v2)
+
 New design supporting rack/shelf/device levels:
+
 - **Target Types**: `rack`, `shelf`, `device`
 - **Schedule Types**:
   - `on` - Turn on at specific time
@@ -67,6 +77,7 @@ New design supporting rack/shelf/device levels:
   - `cycle` - Cycle on/off continuously
 
 #### ESP32 Sensor Integration
+
 - Configurable read interval (5-3600 seconds)
 - Automatic sensor data logging with rack/shelf tracking
 - Real-time sensor readings dashboard
@@ -74,7 +85,9 @@ New design supporting rack/shelf/device levels:
 - Support for analog and digital sensors
 
 #### Activity Logging
+
 All device operations logged with:
+
 - Timestamp
 - Device name
 - Action type (toggle, refresh)
@@ -86,35 +99,40 @@ All device operations logged with:
 
 ### API Endpoints
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/devices` | List all registered devices |
-| POST | `/api/devices/discover` | Discover Kasa devices on network |
-| POST | `/api/devices` | Add device by IP |
-| DELETE | `/api/devices/<id>` | Remove device |
-| POST | `/api/devices/<id>/toggle` | Toggle device on/off |
-| GET | `/api/devices/<id>/state` | Get current device state |
-| PUT | `/api/devices/<id>` | Update device name |
-| GET | `/api/devices/refresh` | Trigger device refresh |
-| GET | `/api/devices/refresh/status` | Get refresh progress |
-| GET | `/api/schedules` | List all schedules |
-| POST | `/api/schedules` | Create new schedule |
-| PUT | `/api/schedules/<id>` | Update schedule |
-| DELETE | `/api/schedules/<id>` | Delete schedule |
-| GET | `/api/logs` | Get activity logs |
-| GET | `/api/sensors` | List all sensors |
-| GET | `/api/sensors/esp32` | List ESP32 devices |
-| POST | `/api/sensors/esp32` | Add ESP32 device |
-| GET | `/api/sensors/readings` | Get sensor readings history |
-| POST | `/api/sensors/readings` | Submit sensor reading |
-| GET | `/api/racks` | List racks |
-| POST | `/api/racks` | Create rack |
-| PUT | `/api/racks/<id>` | Update rack |
-| DELETE | `/api/racks/<id>` | Delete rack |
+| Method | Endpoint                           | Description                    |
+|--------|------------------------------------|--------------------------------|
+| GET    | `/api/devices`                     | List all registered devices    |
+| POST   | `/api/devices/discover`            | Discover Kasa devices          |
+| POST   | `/api/devices`                     | Add device by IP               |
+| DELETE | `/api/devices/<id>`                | Remove device                  |
+| POST   | `/api/devices/<id>/toggle`         | Toggle device on/off           |
+| GET    | `/api/devices/<id>/state`          | Get current device state       |
+| PUT    | `/api/devices/<id>`                | Update device name             |
+| GET    | `/api/devices/refresh`             | Trigger device refresh         |
+| GET    | `/api/devices/refresh/status`      | Get refresh progress           |
+| GET    | `/api/schedules`                   | List all schedules             |
+| POST   | `/api/schedules`                   | Create new schedule            |
+| PUT    | `/api/schedules/<id>`              | Update schedule                |
+| DELETE | `/api/schedules/<id>`              | Delete schedule                |
+| GET    | `/api/logs`                        | Get activity logs              |
+| GET    | `/api/sensors`                     | List all sensors               |
+| GET    | `/api/sensors/esp32`               | List ESP32 devices             |
+| POST   | `/api/sensors/esp32`               | Add ESP32 device               |
+| GET    | `/api/sensors/readings`            | Get sensor readings history    |
+| POST   | `/api/sensors/readings`            | Submit sensor reading          |
+| GET    | `/api/racks`                       | List racks                     |
+| POST   | `/api/racks`                       | Create rack                    |
+| PUT    | `/api/racks/<id>`                  | Update rack                    |
+| DELETE | `/api/racks/<id>`                  | Delete rack                    |
+| GET    | `/api/components`                  | List components                |
+| POST   | `/api/components`                  | Create component               |
+| PUT    | `/api/components/<id>`             | Update component (move/type)   |
+| DELETE | `/api/components/<id>`             | Delete component               |
 
 ### Data Models
 
 #### Device
+
 ```
 - id: INTEGER PRIMARY KEY
 - account_id: INTEGER (foreign key)
@@ -128,7 +146,19 @@ All device operations logged with:
 - created_at: TIMESTAMP
 ```
 
+#### Component
+
+```
+- id: INTEGER PRIMARY KEY
+- parent_type: VARCHAR (shelf/reservoir)
+- parent_id: INTEGER
+- device_id: INTEGER (foreign key)
+- component_type: VARCHAR (pump/light/aerator)
+- name: VARCHAR
+```
+
 #### Schedule
+
 ```
 - id: INTEGER PRIMARY KEY
 - name: VARCHAR
@@ -145,6 +175,7 @@ All device operations logged with:
 ```
 
 #### Activity Log
+
 ```
 - id: INTEGER PRIMARY KEY
 - device_id: INTEGER
@@ -160,6 +191,7 @@ All device operations logged with:
 ```
 
 #### ESP32 Device
+
 ```
 - id: INTEGER PRIMARY KEY
 - name: VARCHAR
@@ -172,6 +204,7 @@ All device operations logged with:
 ```
 
 #### ESP32 Sensor
+
 ```
 - id: INTEGER PRIMARY KEY
 - esp32_id: INTEGER (foreign key)
@@ -183,11 +216,13 @@ All device operations logged with:
 - calibration_scale: REAL
 - rack_id: INTEGER (optional)
 - shelf_id: INTEGER (optional)
+- reservoir_id: INTEGER (optional)
 - is_enabled: INTEGER (0/1)
 - created_at: TIMESTAMP
 ```
 
 #### Sensor Reading
+
 ```
 - id: INTEGER PRIMARY KEY
 - esp32_id: INTEGER (foreign key)
@@ -201,11 +236,15 @@ All device operations logged with:
 ## Configuration
 
 ### Timezone
+
 Set via `TZ` environment variable in docker-compose.yml:
+
 - Default: `America/Edmonton`
 
 ### Retry Configuration
+
 In `backend/constants.py`:
+
 ```python
 MAX_RETRIES = 4
 RETRY_DELAYS = [1.0, 2.0, 5.0]  # seconds
@@ -214,6 +253,7 @@ RETRY_DELAYS = [1.0, 2.0, 5.0]  # seconds
 ## UI/UX Specification
 
 ### Layout Structure
+
 - Single page dashboard with tabs
 - Header with app title and action buttons
 - Tab-based navigation:
@@ -229,6 +269,7 @@ RETRY_DELAYS = [1.0, 2.0, 5.0]  # seconds
 ### Visual Design
 
 #### Color Palette
+
 - Background: `#0f172a` (slate-900)
 - Card Background: `#1e293b` (slate-800)
 - Card Border: `#334155` (slate-700)
@@ -239,10 +280,11 @@ RETRY_DELAYS = [1.0, 2.0, 5.0]  # seconds
 - Button Primary: `#3b82f6` (blue-500)
 - Button Hover: `#2563eb` (blue-600)
 - Special Accents:
-  - Teal: `#14b8a6` (for active states)
+  - Teal: `#14b8a6` (for pumps/lights/aerators)
   - Gold: `#f59e0b` (for sensor values)
 
 #### Typography
+
 - Font Family: "Outfit", sans-serif (Google Fonts)
 - Headings: 600 weight
 - Body: 400 weight
@@ -250,6 +292,7 @@ RETRY_DELAYS = [1.0, 2.0, 5.0]  # seconds
 ### Components
 
 #### Device Card
+
 - Device name
 - Current state indicator (timestamp or refresh icon)
 - IP address display
@@ -257,6 +300,7 @@ RETRY_DELAYS = [1.0, 2.0, 5.0]  # seconds
 - Delete button
 
 #### Sensor Card
+
 - Sensor name and type
 - Current value with unit
 - Last reading timestamp
@@ -265,6 +309,7 @@ RETRY_DELAYS = [1.0, 2.0, 5.0]  # seconds
 - Delete button
 
 #### Schedule Card
+
 - Schedule name
 - Target (rack/shelf/device)
 - Schedule type
@@ -274,6 +319,7 @@ RETRY_DELAYS = [1.0, 2.0, 5.0]  # seconds
 - Delete button
 
 #### Activity Log Table
+
 - Frozen header
 - Zebra striping
 - Filtering (text search + column filter)
@@ -289,3 +335,5 @@ RETRY_DELAYS = [1.0, 2.0, 5.0]  # seconds
 6. **Retry Logic**: 4 retries with 1s, 2s, 5s delays for device communication
 7. **Sensor Persistence**: ESP32 firmware stores rack_id/shelf_id in Preferences for persistence across reboots
 8. **Rack/Shelf Capture**: Sensor readings capture rack/shelf at time of reading, not lookup
+9. **Component Types**: Components change type when dragged between different slot types (light → pump)
+10. **Reservoir Organization**: Reservoirs only accept aerators and sensors (no pumps/lights)
