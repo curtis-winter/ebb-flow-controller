@@ -8,9 +8,6 @@ from zoneinfo import ZoneInfo
 TZ_NAME: str = os.environ.get('TZ', 'America/Edmonton')
 LOCAL_TZ: ZoneInfo = ZoneInfo(TZ_NAME)
 
-# Backwards compatibility alias
-EDMONTON_TZ = LOCAL_TZ
-
 # Retry configuration
 MAX_RETRIES: int = 4
 RETRY_DELAYS: list[float] = [1.0, 2.0, 5.0]

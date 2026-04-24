@@ -124,29 +124,16 @@ def migrate_schema() -> None:
     
     if current_version < 5:
         migrate_to_v5()
+    
+    if current_version < 6:
+        migrate_to_v6()
 
 
-def migrate_to_v5() -> None:
-    """Add rack_id and shelf_id to sensor_readings."""
-    add_column_if_not_exists('sensor_readings', 'rack_id', 'INTEGER')
-    add_column_if_not_exists('sensor_readings', 'shelf_id', 'INTEGER')
-    set_schema_version(5)
-    print("Migrated to v5: Added rack_id/shelf_id to sensor_readings")
-
-
-def migrate_to_v3() -> None:
-    """Add rack_id and shelf_id to esp32_sensors."""
-    add_column_if_not_exists('esp32_sensors', 'rack_id', 'INTEGER')
-    add_column_if_not_exists('esp32_sensors', 'shelf_id', 'INTEGER')
-    set_schema_version(3)
-    print("Migrated to v3: Added rack_id/shelf_id to esp32_sensors")
-
-
-def migrate_to_v4() -> None:
-    """Add update_rate to esp32_devices."""
-    add_column_if_not_exists('esp32_devices', 'update_rate', 'INTEGER DEFAULT 30')
-    set_schema_version(4)
-    print("Migrated to v4: Added update_rate to esp32_devices")
+def migrate_to_v6() -> None:
+    """Add reservoir_id to esp32_sensors for reservoir sensors."""
+    add_column_if_not_exists('esp32_sensors', 'reservoir_id', 'INTEGER')
+    set_schema_version(6)
+    print("Migrated to v6: Added reservoir_id to esp32_sensors")
 
 
 def migrate_to_v1() -> None:

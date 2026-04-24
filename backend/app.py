@@ -9,7 +9,7 @@ from flask_cors import CORS
 from cryptography.fernet import Fernet
 
 from backend.database import db, Database, init_schema, get_db
-from backend.constants import EDMONTON_TZ, PROVIDERS
+from backend.constants import LOCAL_TZ, PROVIDERS
 from backend.services.schedule_service import start_scheduler
 
 app = Flask(__name__, static_folder='../frontend', template_folder='../frontend', static_url_path='/static')

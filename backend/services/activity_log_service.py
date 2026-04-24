@@ -6,7 +6,7 @@ import logging
 from datetime import datetime
 from typing import Optional
 from backend.database import db
-from backend.constants import EDMONTON_TZ
+from backend.constants import LOCAL_TZ
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ def log_activity(
     """
     Log an activity to the activity_log table.
     """
-    timestamp = datetime.now(EDMONTON_TZ).strftime('%Y-%m-%d %H:%M:%S')
+    timestamp = datetime.now(LOCAL_TZ).strftime('%Y-%m-%d %H:%M:%S')
     
     # Ensure we handle None values properly for SQL
     device_response = device_response if device_response else 'N/A'

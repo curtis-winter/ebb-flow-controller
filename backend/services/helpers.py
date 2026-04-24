@@ -3,7 +3,7 @@ Shared helper functions for FlowBoard.
 """
 from typing import Optional, Tuple
 from backend.database import db
-from backend.constants import EDMONTON_TZ
+from backend.constants import LOCAL_TZ
 from kasa import Credentials
 
 

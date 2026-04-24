@@ -7,7 +7,7 @@ from datetime import datetime
 from flask import jsonify, request
 from kasa import Discover
 from backend.database import db, Database
-from backend.constants import EDMONTON_TZ
+from backend.constants import LOCAL_TZ
 from backend.services.device_service import get_device_state, toggle_device_state
 from backend.services.activity_log_service import log_toggle, log_refresh
 from backend.services.helpers import get_account_credentials, get_device_rack_shelf
@@ -208,7 +208,7 @@ def register_routes(app):
         logging.info(f"Device {device_id} toggled to {'ON' if state else 'OFF'} (retries: {retries})")
 
         if state is not None:
-            timestamp = datetime.now(EDMONTON_TZ).strftime('%Y-%m-%d %H:%M:%S')
+            timestamp = datetime.now(LOCAL_TZ).strftime('%Y-%m-%d %H:%M:%S')
             
             with db() as database:
                 database.execute(
@@ -291,7 +291,7 @@ def register_routes(app):
                 
                 refresh_status['current'] = device['id']
                 
-                timestamp = datetime.now(EDMONTON_TZ).strftime('%Y-%m-%d %H:%M:%S')
+                timestamp = datetime.now(LOCAL_TZ).strftime('%Y-%m-%d %H:%M:%S')
                 
                 rack_name, shelf_name = get_device_rack_shelf(device['id'])
                 

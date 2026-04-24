@@ -6,7 +6,7 @@ import logging
 import asyncio
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
-from backend.constants import EDMONTON_TZ
+from backend.constants import LOCAL_TZ
 from backend.database import db, Database
 from backend.services.device_service import get_device_state, toggle_device_state
 from backend.services.activity_log_service import log_toggle
