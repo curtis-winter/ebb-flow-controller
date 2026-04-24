@@ -92,6 +92,7 @@ def register_routes(app):
             all_ids = shelf_ids + reservoir_ids
             
             sensors_for_shelves = {}
+            sensors_for_reservoirs = {}
             if shelf_ids:
                 placeholders = ','.join('?' * len(shelf_ids))
                 sensor_rows = database.fetch_all(f'''
@@ -106,16 +107,36 @@ def register_routes(app):
                         sensors_for_shelves[sid] = []
                     sensors_for_shelves[sid].append(Database.dict(s))
             
+            if reservoir_ids:
+                placeholders = ','.join('?' * len(reservoir_ids))
+                sensor_rows = database.fetch_all(f'''
+                    SELECT s.*, e.name as esp32_name
+                    FROM esp32_sensors s
+                    LEFT JOIN esp32_devices e ON s.esp32_id = e.id
+                    WHERE s.reservoir_id IN ({placeholders})
+                ''', tuple(reservoir_ids))
+                for s in sensor_rows:
+                    sid = s['reservoir_id']
+                    if sid not in sensors_for_reservoirs:
+                        sensors_for_reservoirs[sid] = []
+                    sensors_for_reservoirs[sid].append(Database.dict(s))
+            
             shelves_with_sensors = []
             for s in shelves:
                 shelf_dict = Database.dict(s)
                 shelf_dict['sensors'] = sensors_for_shelves.get(s['id'], [])
                 shelves_with_sensors.append(shelf_dict)
             
+            reservoirs_with_sensors = []
+            for r in reservoirs:
+                res_dict = Database.dict(r)
+                res_dict['sensors'] = sensors_for_reservoirs.get(r['id'], [])
+                reservoirs_with_sensors.append(res_dict)
+            
             result = {
                 'rack': Database.dict(database.fetch_one('SELECT * FROM racks WHERE id = ?', (rack_id,))),
                 'shelves': shelves_with_sensors,
-                'reservoirs': [Database.dict(r) for r in reservoirs],
+                'reservoirs': reservoirs_with_sensors,
                 'components': []
             }
             
@@ -125,7 +146,7 @@ def register_routes(app):
                     SELECT c.*, d.name as device_name, d.ip_address, d.child_id, d.is_on
                     FROM components c
                     LEFT JOIN devices d ON c.device_id = d.id
-                    WHERE c.parent_type = 'shelf' AND c.parent_id IN ({placeholders})
+                    WHERE c.parent_type IN ('shelf', 'reservoir') AND c.parent_id IN ({placeholders})
                 '''
                 component_rows = database.fetch_all(query, tuple(all_ids))
                 result['components'] = [Database.dict(comp) for comp in component_rows]
@@ -288,12 +309,19 @@ def register_routes(app):
         data = request.get_json()
         name = data.get('name')
         device_id = data.get('device_id')
+        parent_type = data.get('parent_type')
+        parent_id = data.get('parent_id')
+        component_type = data.get('component_type')
         
         with db() as database:
             if name is not None:
                 database.execute('UPDATE components SET name = ? WHERE id = ?', (name, component_id))
             if device_id is not None:
                 database.execute('UPDATE components SET device_id = ? WHERE id = ?', (device_id, component_id))
+            if parent_type is not None and parent_id is not None:
+                database.execute('UPDATE components SET parent_type = ?, parent_id = ? WHERE id = ?', (parent_type, parent_id, component_id))
+            if component_type is not None:
+                database.execute('UPDATE components SET component_type = ? WHERE id = ?', (component_type, component_id))
             database.commit()
         
         return jsonify({'success': True})

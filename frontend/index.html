@@ -90,11 +90,15 @@
         .reservoir-item { border-color: var(--accent-green); display: flex; gap: 12px; }
         .component-slot { min-height: 60px; border: 1px dashed var(--border-card); border-radius: 6px; padding: 8px; margin-top: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
         .component-slot.drag-over { border-color: var(--btn-primary); background: rgba(255,200,87,0.1); }
+        .component-slot.loading { opacity: 0.5; pointer-events: none; position: relative; }
+        .component-slot.loading::after { content: ''; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.2); border-radius: 4px; }
+        .component-slot.loading::before { content: '⚙️'; position: absolute; z-index: 1; font-size: 20px; animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         .component-chip { background: var(--border-card); padding: 6px 12px; border-radius: 20px; font-size: 13px; cursor: grab; display: flex; align-items: center; gap: 8px; }
         .component-chip:active { cursor: grabbing; }
         .component-chip.pump { border-left: 3px solid var(--accent-teal); }
-        .component-chip.light { border-left: 3px solid var(--btn-primary); }
-        .component-chip.aerator { border-left: 3px solid var(--accent-green); }
+        .component-chip.light { border-left: 3px solid var(--accent-teal); }
+        .component-chip.aerator { border-left: 3px solid var(--accent-teal); }
         .component-chip.sensor { border-left: 3px solid var(--accent-gold); }
         .draggable-device { background: var(--accent-teal); padding: 8px 14px; border-radius: 6px; font-size: 13px; cursor: grab; display: block; margin-bottom: 8px; }
         .draggable-device:active { cursor: grabbing; }
@@ -120,6 +124,8 @@
         #logsTable tbody tr:nth-child(even) { background: rgba(255,255,255,0.02); }
 
         @media (max-width: 640px) { .devices-grid { grid-template-columns: 1fr; } header { flex-direction: column; align-items: flex-start; } .header-actions { width: 100%; flex-wrap: wrap; } .rack-builder { grid-template-columns: 1fr; } }
+        
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
@@ -141,11 +147,19 @@
         </header>
         
 <div class="tabs main-tabs">
-<button class="tab active" onclick="showTab('system-config')">System Configuration</button>
+<button class="tab active" onclick="showTab('system-status')">System Status</button>
+<button class="tab" onclick="showTab('system-config')">System Configuration</button>
 <button class="tab" onclick="showTab('logs')">Log History</button>
 </div>
         
-        <div id="tab-system-config" class="tab-content active">
+        <div id="tab-system-status" class="tab-content active">
+<div style="padding: 20px;">
+<h2>System Status</h2>
+<div id="systemDiagram">Loading...</div>
+</div>
+</div>
+
+<div id="tab-system-config" class="tab-content">
 <div style="margin: 6px;">
 <div style="display: flex; gap: 0; border-bottom: 2px solid var(--border-card); margin-bottom: 8px; align-items: center;">
 <button type="button" class="tab" id="subTab-devices" onclick="showSubTab('smart-devices')" style="padding: 4px 16px; cursor: pointer; border: none; background: none; color: var(--accent-teal); border-bottom: 2px solid var(--accent-teal);">Smart Devices</button>
@@ -374,7 +388,6 @@
                     <option value="pump">Pump</option>
                     <option value="light">Light</option>
                     <option value="aerator">Aerator</option>
-                    <option value="sensor">Sensor</option>
                 </select>
             </div>
             <div class="modal-row">
@@ -619,6 +632,11 @@
             if (tabId === 'logs') { showLogSubTab('plugs'); }
             if (tabId === 'sensors') { loadEsp32Devices(); }
             if (tabId === 'system-config') { showSubTab('smart-devices'); }
+            if (tabId === 'system-status') {
+                if (systemStatusInterval) clearInterval(systemStatusInterval);
+                systemStatusInterval = setInterval(renderSystemStatus, 10000);
+                renderSystemStatus();
+            }
         }
         
         function showSubTab(subTab) {
@@ -871,10 +889,18 @@ showAlert('Schedule created', false);
 
         async function populateDeviceSelect() {
             const select = document.getElementById('componentDevice');
-            const res = await fetch('/api/devices');
-            const devs = await res.json();
+            
+            // Get devices that are NOT already assigned to components
+            const [devsRes, compsRes] = await Promise.all([
+                fetch('/api/devices'),
+                fetch('/api/components')
+            ]);
+            const devs = await devsRes.json();
+            const comps = await compsRes.json();
+            const usedDeviceIds = new Set(comps.filter(c => c.device_id).map(c => c.device_id));
+            
             select.innerHTML = '<option value="">-- None --</option>';
-            devs.forEach(d => {
+            devs.filter(d => !usedDeviceIds.has(d.id)).forEach(d => {
                 select.innerHTML += `<option value="${d.id}">${d.name}</option>`;
             });
         }
@@ -884,13 +910,41 @@ showAlert('Schedule created', false);
             const name = document.getElementById('componentName').value.trim();
             const device_id = document.getElementById('componentDevice').value || null;
             if (!name) { showAlert('Name required'); return; }
+            
+            // Check if device already assigned to a component
+            if (device_id) {
+                const res = await fetch('/api/components?device_id=' + device_id);
+                const existing = await res.json();
+                if (existing.length > 0) {
+                    showAlert('This smart plug is already assigned to: ' + existing[0].name);
+                    return;
+                }
+            }
 
+            let parent_id = currentComponentParent.id;
+            let parent_type = currentComponentParent.type;
+            
+            // Auto-assign pumps to single reservoir if rack has only one
+            if (component_type === 'pump' && currentComponentParent.type === 'shelf') {
+                const shelfRes = await fetch('/api/racks/' + currentRackId + '/structure');
+                const rackData = await shelfRes.json();
+                if (rackData.reservoirs.length === 1) {
+                    // Auto-assign to the single reservoir instead of shelf
+                    parent_id = rackData.reservoirs[0].id;
+                    parent_type = 'reservoir';
+                } else if (rackData.reservoirs.length > 1) {
+                    // Multiple reservoirs - show message
+                    showAlert('This rack has multiple reservoirs. Please add pumps directly to reservoirs from the sidebar.');
+                    return;
+                }
+            }
+            
             await fetch('/api/components', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    parent_type: currentComponentParent.type,
-                    parent_id: currentComponentParent.id,
+                    parent_type: parent_type,
+                    parent_id: parent_id,
                     component_type,
                     name,
                     device_id: device_id ? parseInt(device_id) : null
@@ -1019,14 +1073,18 @@ async function selectRack(rackId) {
         }
 
         async function loadRackStructure(rackId) {
+            console.log('loadRackStructure called for rackId:', rackId);
             const res = await fetch('/api/racks/' + rackId + '/structure');
             currentRackStructure = await res.json();
+            console.log('Got structure, shelves:', currentRackStructure.shelves?.length, 'reservoirs:', currentRackStructure.reservoirs?.length);
             renderRackCanvas();
             renderAvailableDevices();
+            renderAvailableSensors();
         }
 
         function renderRackCanvas() {
             const canvas = document.getElementById('rackCanvas');
+            console.log('renderRackCanvas called, currentRackId:', currentRackId, 'currentRackStructure:', !!currentRackStructure);
             if (!currentRackStructure) {
                 canvas.innerHTML = '<p style="color: var(--text-secondary); text-align: center; margin-top: 200px;">Select a rack to edit layout</p>';
                 return;
@@ -1052,11 +1110,29 @@ async function selectRack(rackId) {
                 });
             }
 
-            canvas.innerHTML = html;
+canvas.innerHTML = html;
+            
+            // Add dragstart for components after rendering
+            canvas.querySelectorAll('.component-chip[draggable="true"][data-id]').forEach(el => {
+                el.addEventListener('dragstart', e => {
+                    e.dataTransfer.setData('componentId', el.dataset.id);
+                    e.dataTransfer.setData('componentDeviceId', el.dataset.deviceId);
+                    e.dataTransfer.setData('componentName', el.dataset.name);
+                });
+            });
+            
+            // Add dragstart for sensors after rendering
+            canvas.querySelectorAll('.component-chip.sensor[draggable="true"]').forEach(el => {
+                el.addEventListener('dragstart', e => {
+                    e.dataTransfer.setData('sensorId', el.dataset.sensorId);
+                    e.dataTransfer.setData('sensorName', el.textContent);
+                });
+            });
         }
-
+        
         function renderReservoir(res, comps) {
             const aerators = comps.filter(c => c.component_type === 'aerator');
+            const sensors = res.sensors || [];
             return `
                 <div class="reservoir-item" data-id="${res.id}" data-type="reservoir">
                     <div style="flex: 1;">
@@ -1065,18 +1141,24 @@ async function selectRack(rackId) {
                             <button class="btn-small" onclick="showEditReservoirModal(${res.id}, '${res.name.replace(/'/g, "\\'")}')">✏</button>
                         </div>
                         <div style="margin-top: 8px;">
-                            <strong style="color: var(--accent-green);">Aerators:</strong>
+                            <strong style="color: var(--accent-teal);">Aerators:</strong>
                             <div class="component-slot" data-parent="reservoir" data-id="${res.id}" data-type="aerator">
                                 ${aerators.length === 0 ? '<span style="color: var(--text-secondary); font-size: 12px;">Drag aerator here</span>' : ''}
                                 ${aerators.map(c => renderComponentChip(c)).join('')}
                             </div>
-                            <button class="btn-secondary" style="margin-top: 8px; font-size: 12px; padding: 6px 12px;" onclick="showComponentModal('reservoir', ${res.id})">+ Add Device</button>
+                        </div>
+                        <div style="margin-top: 8px;">
+                            <strong style="color: var(--accent-gold);">Sensors:</strong>
+                            <div class="component-slot sensor-slot" data-parent="reservoir" data-id="${res.id}" data-type="sensor">
+                                ${sensors.length === 0 ? '<span style="color: var(--text-secondary); font-size: 12px;">Drag sensor here</span>' : ''}
+                                ${sensors.map(s => `<div class="component-chip sensor" data-sensor-id="${s.id}" draggable="true"><span>🌡️ ${s.name}</span><span style="opacity: 0.6; cursor: pointer;" onclick="removeSensorFromReservoir(${s.id}, ${res.id})">✕</span></div>`).join('')}
+                            </div>
                         </div>
                     </div>
                 </div>
             `;
         }
-
+        
         function renderShelf(shelf, comps) {
             const pumps = comps.filter(c => c.component_type === 'pump');
             const lights = comps.filter(c => c.component_type === 'light');
@@ -1097,7 +1179,7 @@ async function selectRack(rackId) {
                             <button class="btn-secondary" style="margin-top: 8px; font-size: 12px; padding: 6px 12px;" onclick="showComponentModal('shelf', ${shelf.id})">+ Add Device</button>
                         </div>
                         <div>
-                            <strong style="color: var(--btn-primary);">Lights:</strong>
+                            <strong style="color: var(--accent-teal);">Lights:</strong>
                             <div class="component-slot" data-parent="shelf" data-id="${shelf.id}" data-type="light">
                                 ${lights.length === 0 ? '<span style="color: var(--text-secondary); font-size: 12px;">Drag light</span>' : ''}
                                 ${lights.map(c => renderComponentChip(c)).join('')}
@@ -1114,18 +1196,18 @@ async function selectRack(rackId) {
                 </div>
             `;
         }
-
+        
         function renderComponentChip(c) {
             const device = devices.find(d => d.id === c.device_id);
             const status = device ? (device.is_on ? '💡' : '⭕') : '⚪';
             return `
-                <div class="component-chip ${c.component_type}" data-id="${c.id}" draggable="true">
+                <div class="component-chip ${c.component_type}" data-id="${c.id}" data-device-id="${c.device_id}" data-name="${c.name}" draggable="true">
                     <span>${status} ${c.name}</span>
                     <span style="opacity: 0.6; cursor: pointer;" onclick="removeComponent(${c.id})">✕</span>
                 </div>
             `;
         }
-
+        
         async function removeComponent(id) {
             const confirmed = await showConfirm('Remove this component?');
             if (!confirmed) return;
@@ -1182,6 +1264,19 @@ async function selectRack(rackId) {
             
             loadRackStructure(currentRackId);
         }
+        
+        async function removeSensorFromReservoir(sensorId, reservoirId) {
+            const confirmed = await showConfirm('Remove sensor from this reservoir?');
+            if (!confirmed) return;
+            
+            await fetch('/api/sensors/' + sensorId, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reservoir_id: null, rack_id: null })
+            });
+            
+            loadRackStructure(currentRackId);
+        }
 
         async function deleteCurrentRack() {
             const confirmed = await showConfirm('Delete this rack and all its contents?');
@@ -1194,30 +1289,27 @@ async function selectRack(rackId) {
             loadRacks();
         }
 
-function renderAvailableDevices() {
+async function renderAvailableDevices() {
             const div = document.getElementById('availableDevices');
             if (devices.length === 0) {
                 div.innerHTML = '<p style="color: var(--text-secondary);">No smart plugs added. Add them in Smart Device tab first.</p>';
                 return;
             }
             
-            const usedDeviceIds = new Set();
-            if (currentRackStructure) {
-                currentRackStructure.components.forEach(c => {
-                    if (c.device_id) usedDeviceIds.add(c.device_id);
-                });
-            }
-            
+            // Get ALL components from ALL racks to filter out devices used anywhere
+            const compsRes = await fetch('/api/components');
+            const allComponents = await compsRes.json();
+            const usedDeviceIds = new Set(allComponents.filter(c => c.device_id).map(c => c.device_id));
             const available = devices.filter(d => !usedDeviceIds.has(d.id));
+            
             if (available.length === 0) {
-                div.innerHTML = '<p style="color: var(--text-secondary);">All smart plugs assigned to this rack</p>';
+                div.innerHTML = '<p style="color: var(--text-secondary);">All smart plugs already assigned to a rack</p>';
                 return;
             }
             
             div.innerHTML = available.map(d => `
                 <div class="draggable-device" draggable="true" data-device-id="${d.id}" data-device-name="${d.name.replace(/"/g, '&quot;')}">
-                    <span class="device-status ${d.is_on ? 'on' : 'off'}">${d.is_on ? '💡' : '⭕'}</span>
-                    ${d.name}
+                    <span class="device-status ${d.is_on ? 'on' : 'off'}">${d.is_on ? '💡' : '⭕'}</span> ${d.name}
                 </div>
             `).join('');
             
@@ -1236,8 +1328,8 @@ function renderAvailableDevices() {
             const res = await fetch('/api/sensors');
             const allSensors = await res.json();
             
-            // Filter out sensors already assigned to shelves
-            const availableSensors = allSensors.filter(s => !s.shelf_id);
+            // Filter out sensors already assigned to shelves or reservoirs
+            const availableSensors = allSensors.filter(s => !s.shelf_id && !s.reservoir_id);
             
             if (availableSensors.length === 0) {
                 div.innerHTML = '<p style="color: var(--text-secondary);">No unassigned sensors</p>';
@@ -1257,7 +1349,15 @@ function renderAvailableDevices() {
                 });
             });
         }
-
+        
+        // Add dragstart for sensors already in shelves/reservoirs
+        document.querySelectorAll('.component-chip.sensor[draggable="true"]').forEach(el => {
+            el.addEventListener('dragstart', e => {
+                e.dataTransfer.setData('sensorId', el.dataset.sensorId);
+                e.dataTransfer.setData('sensorName', el.textContent);
+            });
+        });
+        
         document.addEventListener('dragover', e => {
             if (e.target.classList.contains('component-slot')) {
                 e.preventDefault();
@@ -1280,40 +1380,74 @@ function renderAvailableDevices() {
             const deviceName = e.dataTransfer.getData('deviceName');
             const sensorId = e.dataTransfer.getData('sensorId');
             const sensorName = e.dataTransfer.getData('sensorName');
+            const componentId = e.dataTransfer.getData('componentId');
+            const componentDeviceId = e.dataTransfer.getData('componentDeviceId');
+            const componentName = e.dataTransfer.getData('componentName');
             
             const parentType = slot.dataset.parent;
             const parentId = parseInt(slot.dataset.id);
             const componentType = slot.dataset.type;
             
+            slot.classList.add('loading');
+            
             // Handle sensor drop
             if (sensorId && componentType === 'sensor') {
-                // Get rack_id from currentRackStructure
                 if (!currentRackId) return;
                 
                 const shelfRes = await fetch('/api/racks/' + currentRackId + '/structure');
                 const rackData = await shelfRes.json();
-                const shelf = rackData.shelves.find(s => s.id === parentId);
-                if (shelf) {
+                
+                if (parentType === 'shelf') {
+                    const shelf = rackData.shelves.find(s => s.id === parentId);
+                    if (shelf) {
+                        await fetch('/api/sensors/' + sensorId, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ shelf_id: parentId, rack_id: currentRackId })
+                        });
+                    }
+                } else if (parentType === 'reservoir') {
                     await fetch('/api/sensors/' + sensorId, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ shelf_id: parentId, rack_id: currentRackId })
-});
-            loadRackStructure(currentRackId);
-        }
-        return;
-    }
-    
-    // Handle device drop
-    if (!deviceId) return;
-    
-    const existingRes = await fetch('/api/components?parent_type=' + parentType + '&parent_id=' + parentId + '&device_id=' + deviceId);
-            const existing = await existingRes.json();
-            if (existing.length > 0) {
-                showAlert('This plug is already assigned to this component');
+                        body: JSON.stringify({ reservoir_id: parentId, rack_id: currentRackId })
+                    });
+                }
+                loadRackStructure(currentRackId);
                 return;
             }
-
+    
+    // Handle device drop
+            console.log('Device drop handler:', { deviceId, componentId, parentType, parentId, componentType, deviceName });
+            if (!deviceId && !componentId) return;
+            
+            // Check if device is already assigned to ANY component
+            if (deviceId) {
+                const compsRes = await fetch('/api/components');
+                const allComps = await compsRes.json();
+                const alreadyAssigned = allComps.find(c => c.device_id === parseInt(deviceId));
+                if (alreadyAssigned) {
+                    showAlert('This smart plug is already assigned to: ' + alreadyAssigned.name);
+                    return;
+                }
+            }
+            
+// Handle moving existing component between shelves/reservoirs
+            if (componentId) {
+                await fetch('/api/components/' + componentId, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        parent_type: parentType, 
+                        parent_id: parentId,
+                        component_type: componentType
+                    })
+                });
+                slot.classList.remove('loading');
+                loadRackStructure(currentRackId);
+                return;
+            }
+            
             await fetch('/api/components', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -1325,6 +1459,7 @@ function renderAvailableDevices() {
                     device_id: parseInt(deviceId)
                 })
             });
+            slot.classList.remove('loading');
             loadRackStructure(currentRackId);
         });
         let editingDeviceId = null;
@@ -2084,9 +2219,172 @@ return;
 showAlert('Reading triggered! Data should arrive shortly.');
 setTimeout(() => loadEsp32Devices(), 3000);
 } catch (e) {
-showAlert('Error triggering ESP32: ' + e.message);
-}
-}
-    </script>
+        showAlert('Error triggering ESP32: ' + e.message);
+        }
+        }
+        
+// Simple system status renderer
+        let systemStatusInterval = null;
+        async function renderSystemStatus() {
+            const diagram = document.getElementById('systemDiagram');
+            if (!diagram) return;
+            if (systemStatusInterval) clearInterval(systemStatusInterval);
+            systemStatusInterval = setInterval(renderSystemStatus, 10000);
+            try {
+                const [readings, racks] = await Promise.all([
+                    fetch('/api/sensors/readings?limit=100').then(r => r.json()),
+                    fetch('/api/racks').then(r => r.json())
+                ]);
+                
+                const latestReadings = {};
+                readings.forEach(r => { if (!latestReadings[r.sensor_name]) latestReadings[r.sensor_name] = r; });
+                
+                let html = '<div style="display: flex; flex-direction: column; gap: 24px;">';
+                
+                if (racks.length === 0) {
+                    html += '<div style="text-align: center; padding: 60px; color: #94a3b8;">';
+                    html += '<div style="font-size: 64px; margin-bottom: 16px;">🌱</div>';
+                    html += '<div style="font-size: 18px;">No grow racks configured</div>';
+                    html += '<div style="font-size: 14px; margin-top: 8px;">Go to System Configuration → Grow Layout to add racks</div>';
+                    html += '</div>';
+                } else {
+                    for (const rack of racks) {
+                        const rackStructure = await fetch('/api/racks/' + rack.id + '/structure').then(r => r.json());
+                        html += renderRackCard(rack, rackStructure, [], latestReadings);
+                    }
+                }
+                
+                html += '</div>';
+                diagram.innerHTML = html;
+            } catch (e) {
+                diagram.innerHTML = '<div style="color: #ef4444; text-align: center; padding: 40px;">Error: ' + e.message + '</div>';
+                console.error(e);
+            }
+        }
+        
+        function renderRackCard(rack, structure, allDevices, latestReadings) {
+            const shelves = structure.shelves || [];
+            const components = structure.components || [];
+            const reservoirs = structure.reservoirs || [];
+            
+            let html = '<div style="background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%); border-radius: 16px; padding: 20px; border: 1px solid #334155;">';
+            
+            // Header - just rack name
+            html += '<h3 style="color: #f5f5f5; margin: 0 0 16px 0; font-size: 18px;">' + rack.name + '</h3>';
+            
+            // Visual rack with shelves
+            html += '<div style="position: relative; min-height: ' + Math.max(280, shelves.length * 90 + 60) + 'px; background: rgba(15,23,42,0.5); border-radius: 12px; margin-bottom: 16px; display: flex; flex-direction: column; padding: 20px 20px 0 20px; gap: 0;">';
+            
+            // Render shelves from top to bottom (position 0 = top)
+            const sortedShelves = [...shelves].sort((a, b) => b.position - a.position);
+            
+            for (let i = 0; i < Math.max(sortedShelves.length, 3); i++) {
+                const shelf = sortedShelves[i];
+                
+if (shelf) {
+                    const shelfComponents = components.filter(c => c.parent_type === 'shelf' && c.parent_id === shelf.id);
+                    const shelfSensors = shelf.sensors || [];
+                    
+                    const shelfLights = shelfComponents.filter(c => c.component_type === 'light');
+                    const shelfPumps = shelfComponents.filter(c => c.component_type === 'pump');
+                    
+                    html += '<div style="background: #1e293b; border-radius: 8px; padding: 12px; margin-bottom: ' + (i < sortedShelves.length - 1 ? '16px' : '0') + '; border: 1px solid #334155; display: flex; flex-direction: column; gap: 10px;">';
+                    
+                    // Light bar - wide thin rectangle like fluorescent tube at top
+                    if (shelfLights.length > 0) {
+                        const anyLightsOn = shelfLights.some(l => l.is_on);
+                        html += '<div style="display: flex; gap: 6px; flex-wrap: wrap;">';
+                        for (const light of shelfLights) {
+                            const isOn = light.is_on;
+                            html += '<div style="flex: 1; height: 12px; min-width: 60px; border-radius: 2px; background: ' + (isOn ? '#f59e0b' : '#374151') + '; box-shadow: ' + (isOn ? '0 0 16px #f59e0b, 0 0 32px #f59e0b, inset 0 -2px 4px rgba(255,255,255,0.3)' : 'none') + ';"></div>';
+                        }
+                        html += '</div>';
+                    }
+                    
+                    // Pumps and sensors row
+                    if (shelfPumps.length > 0 || shelfSensors.length > 0) {
+                        html += '<div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center; min-height: 32px;">';
+                        
+                        // Pumps - minimalist spinning impeller
+                        for (const pump of shelfPumps) {
+                            const isOn = pump.is_on;
+                            html += '<div style="width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">';
+                            html += '<svg width="24" height="24" viewBox="0 0 24 24" style="' + (isOn ? 'animation: spin 1s linear infinite;' : '') + '">';
+                            html += '<circle cx="12" cy="12" r="3" fill="' + (isOn ? '#3b82f6' : '#4b5563') + '"/>';
+                            html += '<path d="M12 2 L12 6 M12 18 L12 22 M2 12 L6 12 M18 12 L22 12" stroke="' + (isOn ? '#3b82f6' : '#4b5563') + '" stroke-width="2" stroke-linecap="round"/>';
+                            html += '<path d="M4.93 4.93 L7.76 7.76 M16.24 16.24 L19.07 19.07 M4.93 19.07 L7.76 16.24 M16.24 7.76 L19.07 4.93" stroke="' + (isOn ? '#3b82f6' : '#4b5563') + '" stroke-width="2" stroke-linecap="round"/>';
+                            html += '</svg>';
+                            html += '</div>';
+                        }
+                        
+                        html += '</div>';
+                        
+                        // Sensors row with readings
+                        if (shelfSensors.length > 0) {
+                            html += '<div style="display: flex; gap: 8px; flex-wrap: wrap;">';
+                            for (const sensor of shelfSensors) {
+                                const reading = latestReadings[sensor.name];
+                                html += '<div class="component-chip sensor" data-sensor-id="' + sensor.id + '" draggable="true" style="border-left-color: var(--accent-gold);">';
+                                html += '<span>🌡️ ' + (sensor.name || 'Sensor') + '</span>';
+                                if (reading && reading.value !== undefined) {
+                                    html += '<span style="font-size: 12px; color: #f59e0b; font-weight: 600;">' + reading.value.toFixed(1) + '</span>';
+                                }
+                                html += '<span style="opacity: 0.6; cursor: pointer;" onclick="removeSensorFromShelf(' + sensor.id + ', ' + shelf.id + ')">✕</span>';
+                                html += '</div>';
+                            }
+                            html += '</div>';
+                        }
+                    } else if (shelfLights.length === 0) {
+                        html += '<div style="color: #4b5563; font-size: 12px; font-style: italic;">Empty</div>';
+                    }
+                    
+                    html += '</div>';
+                } else if (i < 3) {
+                    // Empty shelf placeholder
+                    html += '<div style="background: rgba(30,41,59,0.5); border-radius: 8px; padding: 12px; margin-bottom: 16px; border: 1px dashed #334155; text-align: center;">';
+                    html += '<span style="color: #4b5563; font-size: 12px; font-style: italic;">Empty slot</span>';
+                    html += '</div>';
+                }
+            }
+            
+            // Reservoirs at bottom
+            if (reservoirs.length > 0) {
+                html += '<div style="background: #0f172a; border-radius: 8px 8px 12px 12px; padding: 16px; margin-top: auto; border: 1px solid #059669;">';
+                html += '<div style="display: flex; gap: 16px; flex-wrap: wrap;">';
+                
+                for (const res of reservoirs) {
+                    html += '<div style="background: #1e293b; border: 1px solid #059669; border-radius: 6px; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">';
+                    html += '<span style="font-size: 14px;">💧</span>';
+                    html += '<span style="font-size: 13px; color: #34d399;">' + res.name + '</span>';
+                    
+                    // Find pumps feeding this reservoir
+                    const resPumps = components.filter(c => c.parent_type === 'reservoir' && c.parent_id === res.id);
+                    for (const pump of resPumps) {
+                        const isOn = pump.is_on;
+                        html += '<svg width="16" height="16" viewBox="0 0 24 24" style="transform: ' + (isOn ? 'rotate(0deg)' : '') + '">';
+                        html += '<circle cx="12" cy="12" r="3" fill="' + (isOn ? '#3b82f6' : '#4b5563') + '"/>';
+                        html += '<path d="M12 2 L12 6 M12 18 L12 22 M2 12 L6 12 M18 12 L22 12" stroke="' + (isOn ? '#3b82f6' : '#4b5563') + '" stroke-width="2" stroke-linecap="round"/>';
+                        html += '</svg>';
+                    }
+                    html += '</div>';
+                }
+                
+                html += '</div></div>';
+            }
+            
+            if (shelves.length === 0) {
+                html += '<div style="flex: 1;"></div>';
+            }
+            
+            html += '</div></div>';
+            
+            return html;
+        }
+        
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', function() {
+            renderSystemStatus();
+        });
+        </script>
 </body>
 </html>
