@@ -140,197 +140,200 @@ void saveConfig() {
 }
 
 void handleRoot() {
-    String html = R"rawliteral(
+  String html = R"rawliteral(
 <!DOCTYPE html>
 <html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>ESP32 Sensor Config</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; background: #1a1a2e; color: #eee; }
-        h1 { color: #00d4ff; }
-        h2 { color: #ffb703; margin-top: 30px; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-weight: bold; }
-        input, select { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #333; background: #2a2a4a; color: #fff; box-sizing: border-box; }
-        button { background: #00d4ff; color: #000; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 10px; }
-        button:hover { background: #00a8cc; }
-        .sensor-card { background: #2a2a4a; padding: 15px; margin: 10px 0; border-radius: 5px; }
-        .sensor-card h3 { margin: 0 0 10px 0; color: #ffb703; }
-        .info { background: #2a2a4a; padding: 10px; border-radius: 5px; margin-bottom: 20px; }
-        .sensor-value { font-size: 24px; color: #00d4ff; font-weight: bold; }
-        .sensor-reading { color: #888; font-size: 14px; }
-        .btn-small { padding: 6px 12px; font-size: 12px; margin: 2px; }
-        .btn-danger { background: #ff4757; }
-        .btn-danger:hover { background: #ff6b81; }
-        .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-        .tab { padding: 10px 20px; background: #2a2a4a; border: none; border-radius: 5px; cursor: pointer; }
-        .tab.active { background: #00d4ff; color: #000; }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ESP32 Sensor Config</title>
+<style>
+body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; background: #1a1a2e; color: #eee; }
+h1 { color: #00d4ff; }
+h2 { color: #ffb703; margin-top: 30px; }
+.form-group { margin-bottom: 15px; }
+label { display: block; margin-bottom: 5px; font-weight: bold; }
+input, select { width: 100%; padding: 10px; border-radius: 5px; border: 1px solid #333; background: #2a2a4a; color: #fff; box-sizing: border-box; }
+button { background: #00d4ff; color: #000; padding: 12px 24px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; margin-top: 10px; }
+button:hover { background: #00a8cc; }
+.sensor-card { background: #2a2a4a; padding: 15px; margin: 10px 0; border-radius: 5px; }
+.sensor-card h3 { margin: 0 0 10px 0; color: #ffb703; }
+.info { background: #2a2a4a; padding: 10px; border-radius: 5px; margin-bottom: 20px; }
+.sensor-value { font-size: 24px; color: #00d4ff; font-weight: bold; }
+.sensor-reading { color: #888; font-size: 14px; }
+.btn-small { padding: 6px 12px; font-size: 12px; margin: 2px; }
+.btn-danger { background: #ff4757; }
+.btn-danger:hover { background: #ff6b81; }
+.tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+.tab { padding: 10px 20px; background: #2a2a4a; border: none; border-radius: 5px; cursor: pointer; }
+.tab.active { background: #00d4ff; color: #000; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+.live-reading { background: #2a2a4a; padding: 15px; margin: 10px 0; border-radius: 5px; border-left: 4px solid #00d4ff; }
+.live-reading h3 { margin: 0 0 5px 0; color: #ffb703; }
+.live-value { font-size: 28px; color: #00d4ff; font-weight: bold; }
+.live-type { color: #888; font-size: 12px; }
+</style>
 </head>
 <body>
-    <h1>🌡️ ESP32 Sensor Config</h1>
-    
-    <div class="info">
-        <strong>Status:</strong> )rawliteral";
-    html += WiFi.status() == WL_CONNECTED ? "Connected" : "Disconnected";
-    html += R"rawliteral(<br>
-        <strong>IP:</strong> )rawliteral";
-    html += WiFi.localIP().toString();
-    html += R"rawliteral(<br>
-        <strong>MAC:</strong> )rawliteral";
-    html += WiFi.macAddress();
-    html += R"rawliteral(
-    </div>
-    
-    <div class="tabs">
-        <button class="tab active" onclick="showTab('config')">Configuration</button>
-        <button class="tab" onclick="showTab('sensors')">Sensors & Readings</button>
-    </div>
-    
-    <div id="config" class="tab-content active">
-        <form action="/save" method="POST">
-            <h2>📶 WiFi Settings</h2>
-            <div class="form-group">
-                <label>SSID</label>
-                <input type="text" name="wifiSsid" value=")rawliteral";
-    html += wifiSsid;
-    html += R"rawliteral(" required>
-            </div>
-            <div class="form-group">
-                <label>Password</label>
-                <input type="password" name="wifiPass" value=")rawliteral";
-    html += wifiPassword;
-    html += R"rawliteral(">
-            </div>
-            
-            <h2>🖥️ FlowBoard Server</h2>
-            <div class="form-group">
-                <label>Server IP Address</label>
-                <input type="text" name="serverIp" value=")rawliteral";
-    html += serverIp;
-    html += R"rawliteral(" required pattern="[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}">
-            </div>
-            <div class="form-group">
-                <label>Server Port</label>
-                <input type="number" name="serverPort" value=")rawliteral";
-    html += String(serverPort);
-    html += R"rawliteral(" required min="1" max="65535">
-            </div>
-            <div class="form-group">
-                <label>Read Interval (seconds)</label>
-                <input type="number" name="readIntervalSec" value=")rawliteral";
-    html += String(readIntervalMs / 1000);
-    html += R"rawliteral(" required min="5" max="3600">
-            </div>
-            
-            <button type="submit">💾 Save Configuration</button>
-        </form>
-    </div>
-    
-    <div id="sensors" class="tab-content">
-        <h2>🌡️ Sensor Configuration</h2>
-        <form action="/save" method="POST">
-            <div class="form-group">
-                <label>Number of Sensors</label>
-                <input type="number" name="sensorCount" value=")rawliteral";
-    html += String(sensorCount);
-    html += R"rawliteral(" min="0" max="10" id="sensorCount" onchange="updateSensorFields()">
-            </div>
-            <div id="sensorFields">
+<h1>🌡️ ESP32 Sensor Config</h1>
+
+<div class="info">
+<strong>Status:</strong> )rawliteral";
+  html += WiFi.status() == WL_CONNECTED ? "Connected" : "Disconnected";
+  html += R"rawliteral(<br>
+<strong>IP:</strong> )rawliteral";
+  html += WiFi.localIP().toString();
+  html += R"rawliteral(<br>
+<strong>MAC:</strong> )rawliteral";
+  html += WiFi.macAddress();
+  html += R"rawliteral(
+</div>
+
+<div class="tabs">
+<button class="tab active" onclick="showTab('readings')">📊 Live Readings</button>
+<button class="tab" onclick="showTab('config')">⚙️ Configuration</button>
+</div>
+
+<div id="readings" class="tab-content active">
+<h2>📊 Live Sensor Readings</h2>
+<div id="liveReadings"></div>
+<button onclick="refreshReadings()" class="btn-small">🔄 Refresh Now</button>
+</div>
+
+<div id="config" class="tab-content">
+<form action="/save" method="POST">
+<h2>📶 WiFi Settings</h2>
+<div class="form-group">
+<label>SSID</label>
+<input type="text" name="wifiSsid" value=")rawliteral";
+  html += wifiSsid;
+  html += R"rawliteral(" required>
+</div>
+<div class="form-group">
+<label>Password</label>
+<input type="password" name="wifiPass" value=")rawliteral";
+  html += wifiPassword;
+  html += R"rawliteral(">
+</div>
+
+<h2>🖥️ FlowBoard Server</h2>
+<div class="form-group">
+<label>Server IP Address</label>
+<input type="text" name="serverIp" value=")rawliteral";
+  html += serverIp;
+  html += R"rawliteral(" required pattern="[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}">
+</div>
+<div class="form-group">
+<label>Server Port</label>
+<input type="number" name="serverPort" value=")rawliteral";
+  html += String(serverPort);
+  html += R"rawliteral(" required min="1" max="65535">
+</div>
+<div class="form-group">
+<label>Read Interval (seconds)</label>
+<input type="number" name="readIntervalSec" value=")rawliteral";
+  html += String(readIntervalMs / 1000);
+  html += R"rawliteral(" required min="5" max="3600">
+</div>
+
+<button type="submit">💾 Save Configuration</button>
+</form>
+
+<h2>🌡️ Sensor Configuration</h2>
+<div class="form-group">
+<label>Number of Sensors</label>
+<input type="number" name="sensorCount" value=")rawliteral";
+  html += String(sensorCount);
+  html += R"rawliteral(" min="0" max="10" id="sensorCount" onchange="updateSensorFields()">
+</div>
+<div id="sensorFields">
 )";
-    
-    char buf[512];
-    for (int i = 0; i < 10; i++) {
-        if (i < sensorCount) {
-            snprintf(buf, sizeof(buf),
-                "<div class=\"sensor-card\">"
-                "<h3>Sensor %d</h3>"
-                "<div class=\"form-group\"><label>Name</label><input type=\"text\" name=\"sensor%d_name\" value=\"%s\"></div>"
-                "<div class=\"form-group\"><label>Type</label>"
-                "<select name=\"sensor%d_type\">"
-                "<option value=\"capacitive\" %s>Capacitive</option>"
-                "<option value=\"analog\" %s>Analog</option>"
-                "<option value=\"digital\" %s>Digital</option>"
-                "<option value=\"ds18b20\" %s>DS18B20</option>"
-                "<option value=\"dht22\" %s>DHT22</option></select></div>"
-"<div class=\"form-group\"><label>GPIO Pin (ADC1: 34,35,36,39 recommended)</label>"
-"<input type=\"number\" name=\"sensor%d_pin\" value=\"%d\" min=\"0\" max=\"39\"></div>"
-                "<div class=\"form-group\"><label>Calibration Offset</label>"
-                "<input type=\"number\" name=\"sensor%d_offset\" value=\"%.2f\" step=\"0.1\"></div>"
-                "<div class=\"form-group\"><label>Calibration Scale</label>"
-                "<input type=\"number\" name=\"sensor%d_scale\" value=\"%.2f\" step=\"0.01\"></div>"
-                "</div>",
-                i + 1, i, sensors[i].name, i,
-                strcmp(sensors[i].type, "capacitive") == 0 ? "selected" : "",
-                strcmp(sensors[i].type, "analog") == 0 ? "selected" : "",
-                strcmp(sensors[i].type, "digital") == 0 ? "selected" : "",
-                strcmp(sensors[i].type, "ds18b20") == 0 ? "selected" : "",
-                strcmp(sensors[i].type, "dht22") == 0 ? "selected" : "",
-                i, sensors[i].pin, i, sensors[i].offset, i, sensors[i].scale);
-            html += buf;
-        }
-    }
-    
-    html += R"rawliteral(</div>
-            <button type="submit">💾 Save Configuration</button>
-        </form>
-        
-        <h2>🌡️ Live Readings</h2>
-        <div id="readings"></div>
-        <button onclick="refreshReadings()" class="btn-small">🔄 Refresh Now</button>
-    </div>
-    
-    <script>
-        function showTab(tabName) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            const btn = Array.from(document.querySelectorAll('.tab')).find(b => b.textContent.toLowerCase().includes(tabName.split('-')[0] || tabName));
-            if (btn) btn.classList.add('active');
-            document.getElementById(tabName).classList.add('active');
-            if (tabName === 'sensors') refreshReadings();
-        }
-        
-        function updateSensorFields() {
-            alert('Note: Changing sensor count will require saving and rebooting.');
-        }
-        
-        async function refreshReadings() {
-            try {
-                const res = await fetch('/api/sensor/readings');
-                const data = await res.json();
-                const div = document.getElementById('readings');
-                if (data.sensors && data.sensors.length > 0) {
-                    div.innerHTML = data.sensors.map(s => 
-                        '<div class="sensor-card">' +
-                        '<h3>' + s.name + '</h3>' +
-                        '<div class="sensor-value">' + s.value.toFixed(1) + '</div>' +
-                        '<div class="sensor-reading">Type: ' + s.type + ' | GPIO: ' + s.pin + '</div>' +
-                        '</div>'
-                    ).join('');
-                } else {
-                    div.innerHTML = '<p>No sensors configured</p>';
-                }
-            } catch (e) {
-                console.error('Failed to refresh:', e);
-            }
-        }
-        
-        // Auto-refresh readings every 30 seconds when on sensors tab
-        setInterval(() => {
-            if (document.getElementById('sensors').classList.contains('active')) {
-                refreshReadings();
-            }
-        }, 30000);
-    </script>
+
+char buf[512];
+for (int i = 0; i < 10; i++) {
+if (i < sensorCount) {
+  snprintf(buf, sizeof(buf),
+  "<div class=\"sensor-card\">"
+  "<h3>Sensor %d</h3>"
+  "<div class=\"form-group\"><label>Name</label><input type=\"text\" name=\"sensor%d_name\" value=\"%s\"></div>"
+  "<div class=\"form-group\"><label>Type</label>"
+  "<select name=\"sensor%d_type\">"
+  "<option value=\"capacitive\" %s>Capacitive</option>"
+  "<option value=\"analog\" %s>Analog</option>"
+  "<option value=\"digital\" %s>Digital</option>"
+  "<option value=\"ds18b20\" %s>DS18B20</option>"
+  "<option value=\"dht22\" %s>DHT22</option></select></div>"
+  "<div class=\"form-group\"><label>GPIO Pin (ADC1: 34,35,36,39 recommended)</label>"
+  "<input type=\"number\" name=\"sensor%d_pin\" value=\"%d\" min=\"0\" max=\"39\"></div>"
+  "<div class=\"form-group\"><label>Calibration Offset</label>"
+  "<input type=\"number\" name=\"sensor%d_offset\" value=\"%.2f\" step=\"0.1\"></div>"
+  "<div class=\"form-group\"><label>Calibration Scale</label>"
+  "<input type=\"number\" name=\"sensor%d_scale\" value=\"%.2f\" step=\"0.01\"></div>"
+  "</div>",
+  i + 1, i, sensors[i].name, i,
+  strcmp(sensors[i].type, "capacitive") == 0 ? "selected" : "",
+  strcmp(sensors[i].type, "analog") == 0 ? "selected" : "",
+  strcmp(sensors[i].type, "digital") == 0 ? "selected" : "",
+  strcmp(sensors[i].type, "ds18b20") == 0 ? "selected" : "",
+  strcmp(sensors[i].type, "dht22") == 0 ? "selected" : "",
+  i, sensors[i].pin, i, sensors[i].offset, i, sensors[i].scale);
+  html += buf;
+}
+}
+
+html += R"rawliteral(</div>
+<button type="submit">💾 Save Configuration</button>
+</form>
+</div>
+
+<script>
+function showTab(tabName) {
+document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+const btn = Array.from(document.querySelectorAll('.tab')).find(b => b.textContent.toLowerCase().includes(tabName.split('-')[0] || tabName));
+if (btn) btn.classList.add('active');
+document.getElementById(tabName).classList.add('active');
+if (tabName === 'readings') refreshReadings();
+}
+
+function updateSensorFields() {
+alert('Note: Changing sensor count will require saving and rebooting.');
+}
+
+async function refreshReadings() {
+try {
+const res = await fetch('/api/sensor/readings');
+const data = await res.json();
+const div = document.getElementById('liveReadings');
+if (data.sensors && data.sensors.length > 0) {
+div.innerHTML = data.sensors.map(s =>
+'<div class="live-reading">' +
+'<h3>' + s.name + '</h3>' +
+'<div class="live-value">' + s.value.toFixed(1) + '</div>' +
+'<div class="live-type">Type: ' + s.type + ' | GPIO: ' + s.pin + '</div>' +
+'</div>'
+).join('');
+} else {
+div.innerHTML = '<p>No sensors configured</p>';
+}
+} catch (e) {
+console.error('Failed to refresh:', e);
+}
+}
+
+// Auto-refresh readings every 100ms (10 times per second) when on readings tab
+setInterval(() => {
+if (document.getElementById('readings').classList.contains('active')) {
+refreshReadings();
+}
+}, 100);
+</script>
 </body>
 </html>
 )rawliteral";
-    
-    configServer.send(200, "text/html", html);
+
+configServer.send(200, "text/html", html);
 }
 
 void handleSaveConfig() {
@@ -614,14 +617,15 @@ void pushSensorsToServer() {
 }
 
 float readSensor(Sensor* s) {
-    int samples = 10;
-    long total = 0;
-    for (int i = 0; i < samples; i++) {
-        total += analogRead(s->pin);
-        delayMicroseconds(100);
-    }
-    float raw = total / (float)samples;
-    return (raw * s->scale) + s->offset;
+  int samples = 10;
+  long total = 0;
+  for (int i = 0; i < samples; i++) {
+    total += analogRead(s->pin);
+    yield(); // Allow WiFi stack to process
+    delayMicroseconds(100);
+  }
+  float raw = total / (float)samples;
+  return (raw * s->scale) + s->offset;
 }
 
 void sendReadingToServer() {
@@ -776,12 +780,24 @@ void setup() {
 }
 
 void loop() {
-    configServer.handleClient();
-    
-    unsigned long now = millis();
-    
-    // Check for serial commands
-    if (Serial.available() > 0) {
+  configServer.handleClient();
+  yield(); // Allow WiFi stack to process
+
+  unsigned long now = millis();
+
+  // Periodically check WiFi connection and restart web server if needed
+  static unsigned long lastWifiCheck = 0;
+  if (now - lastWifiCheck > 60000) { // Check every minute
+    lastWifiCheck = now;
+    if (WiFi.status() != WL_CONNECTED) {
+      Serial.println("WiFi disconnected, reconnecting...");
+      WiFi.reconnect();
+      delay(1000);
+    }
+  }
+
+  // Check for serial commands
+  if (Serial.available() > 0) {
         String command = Serial.readStringUntil('\n');
         command.trim();
         if (command == "readings") {
