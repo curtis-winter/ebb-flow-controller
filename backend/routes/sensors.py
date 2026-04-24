@@ -557,6 +557,7 @@ def pull_sensors_from_esp32(esp32_id):
             return jsonify({'error': 'No IP address for device'}), 400
         
         try:
+            logger.info(f"Pulling sensors from ESP32 at {ip_address}")
             response = requests.get(f'http://{ip_address}:80/api/sensors/list', timeout=5)
             response.raise_for_status()
             data = response.json()
@@ -589,9 +590,14 @@ def pull_sensors_from_esp32(esp32_id):
                     created += 1
             
             database.commit()
+            logger.info(f"Pulled {created} sensors from ESP32")
             return jsonify({'status': 'ok', 'pulled': created, 'total': len(sensors)})
         except requests.RequestException as e:
+            logger.error(f"Failed to pull sensors from ESP32: {e}")
             return jsonify({'error': f'Failed to connect to ESP32: {str(e)}'}), 500
+        except Exception as e:
+            logger.error(f"Unexpected error pulling sensors: {e}")
+            return jsonify({'error': f'Unexpected error: {str(e)}'}), 500
 
 
 @sensors_bp.route('/esp32/<int:esp32_id>/push', methods=['POST'])

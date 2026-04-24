@@ -2181,36 +2181,36 @@ loadEsp32Devices();
 }
         
 async function pullSensorsFromEsp32(id) {
-showAlert('Pulling sensors from ESP32...', 'info');
-try {
-const res = await fetch('/api/sensors/esp32/' + id + '/pull', { method: 'POST' });
-if (!res.ok) {
-showAlert('Failed to pull sensors from ESP32');
-return;
-}
-const data = await res.json();
-showAlert('Pulled ' + data.pulled + ' sensors successfully!');
-loadEsp32Devices();
-esp32LastPushed[id] = Date.now();
-} catch (e) {
-showAlert('Error pulling sensors: ' + e.message);
-}
-}
-
-async function pushSensorsToEsp32(id) {
-showAlert('Pushing sensors to ESP32...', 'info');
-try {
-const res = await fetch('/api/sensors/esp32/' + id + '/push', { method: 'POST' });
-if (!res.ok) {
-showAlert('Failed to push sensors to ESP32');
-return;
-}
-const data = await res.json();
-showAlert('Pushed ' + data.pushed + ' sensors successfully!');
-} catch (e) {
-showAlert('Error pushing sensors: ' + e.message);
-}
-}
+        showAlert('Pulling sensors from ESP32...', 'info');
+        try {
+            const res = await fetch('/api/sensors/esp32/' + id + '/pull', { method: 'POST' });
+            const data = await res.json();
+            if (!res.ok) {
+                showAlert('Failed to pull sensors: ' + (data.error || 'Unknown error'), 'error');
+                return;
+            }
+            showAlert('Pulled ' + data.pulled + ' sensors successfully!');
+            loadEsp32Devices();
+            esp32LastPushed[id] = Date.now();
+        } catch (e) {
+            showAlert('Error pulling sensors: ' + e.message);
+        }
+    }
+    
+    async function pushSensorsToEsp32(id) {
+        showAlert('Pushing sensors to ESP32...', 'info');
+        try {
+            const res = await fetch('/api/sensors/esp32/' + id + '/push', { method: 'POST' });
+            const data = await res.json();
+            if (!res.ok) {
+                showAlert('Failed to push sensors: ' + (data.error || 'Unknown error'), 'error');
+                return;
+            }
+            showAlert('Pushed ' + data.pushed + ' sensors successfully!');
+        } catch (e) {
+            showAlert('Error pushing sensors: ' + e.message);
+        }
+    }
         
 async function triggerEsp32Readings(id) {
 showAlert('Triggering sensor refresh...', 'info');
