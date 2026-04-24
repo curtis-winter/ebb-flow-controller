@@ -10,6 +10,7 @@
 #define CONFIG_PULL_INTERVAL_MS 300000
 #define DEFAULT_SERVER_PORT 9731
 #define LED_PIN 2
+#define DEFAULT_WEB_REFRESH_MS 1000  // Default web UI refresh rate (1 second)
 
 WebServer configServer(80);
 Preferences preferences;
@@ -29,6 +30,7 @@ int sensorCount = 0;
 unsigned long lastRead = 0;
 unsigned long lastConfigPull = 0;
 unsigned long readIntervalMs = READ_INTERVAL_MS_DEFAULT;
+unsigned long webRefreshMs = DEFAULT_WEB_REFRESH_MS; // Web UI refresh rate
 int myDeviceId = -1;
 
 char serverIp[16] = "10.0.0.228";
@@ -74,6 +76,10 @@ void loadConfig() {
     if (readIntervalMs < 5000) readIntervalMs = 5000;
     if (readIntervalMs > 3600000) readIntervalMs = 3600000;
     
+    webRefreshMs = preferences.getInt("webRefreshMs", DEFAULT_WEB_REFRESH_MS);
+    if (webRefreshMs < 100) webRefreshMs = 100;
+    if (webRefreshMs > 10000) webRefreshMs = 10000;
+    
     sensorCount = preferences.getInt("sensorCount", 0);
     if (sensorCount == 0) {
         addDefaultSensors();
@@ -106,8 +112,11 @@ void loadConfig() {
     Serial.println(serverPort);
     Serial.print("  WiFi: ");
     Serial.println(wifiSsid);
-    Serial.print("  Read Interval: ");
+Serial.print(" Read Interval: ");
     Serial.print(readIntervalMs);
+    Serial.println("ms");
+    Serial.print(" Web Refresh: ");
+    Serial.print(webRefreshMs);
     Serial.println("ms");
     Serial.print("  Sensors: ");
     Serial.println(sensorCount);
@@ -120,6 +129,7 @@ void saveConfig() {
     preferences.putString("wifiSsid", wifiSsid);
     preferences.putString("wifiPass", wifiPassword);
     preferences.putInt("readIntervalMs", readIntervalMs);
+    preferences.putInt("webRefreshMs", webRefreshMs);
     preferences.putInt("sensorCount", sensorCount);
     
     for (int i = 0; i < sensorCount; i++) {
@@ -233,8 +243,15 @@ button:hover { background: #00a8cc; }
 <div class="form-group">
 <label>Read Interval (seconds)</label>
 <input type="number" name="readIntervalSec" value=")rawliteral";
-  html += String(readIntervalMs / 1000);
-  html += R"rawliteral(" required min="5" max="3600">
+html += String(readIntervalMs / 1000);
+html += R"rawliteral(" required min="5" max="3600">
+</div>
+<div class="form-group">
+<label>Web UI Refresh Rate (ms)</label>
+<input type="number" name="webRefreshMs" value=")rawliteral";
+html += String(webRefreshMs);
+html += R"rawliteral(" required min="100" max="10000" step="100">
+<div style="font-size: 11px; color: #888; margin-top: 4px;">Update frequency for live readings (100ms-10s). Lower = faster but more battery use.</div>
 </div>
 
 <button type="submit">💾 Save Configuration</button>
@@ -322,12 +339,15 @@ console.error('Failed to refresh:', e);
 }
 }
 
-// Auto-refresh readings every 100ms (10 times per second) when on readings tab
+// Auto-refresh readings based on configured refresh rate
+const REFRESH_RATE = )rawliteral";
+html += String(webRefreshMs);
+html += R"rawliteral(;
 setInterval(() => {
 if (document.getElementById('readings').classList.contains('active')) {
 refreshReadings();
 }
-}, 100);
+}, REFRESH_RATE);
 </script>
 </body>
 </html>
@@ -354,6 +374,11 @@ void handleSaveConfig() {
         if (intervalSec >= 5 && intervalSec <= 3600) {
             readIntervalMs = intervalSec * 1000;
         }
+    }
+    if (configServer.hasArg("webRefreshMs")) {
+        webRefreshMs = configServer.arg("webRefreshMs").toInt();
+        if (webRefreshMs < 100) webRefreshMs = 100;
+        if (webRefreshMs > 10000) webRefreshMs = 10000;
     }
     if (configServer.hasArg("sensorCount")) {
         sensorCount = configServer.arg("sensorCount").toInt();
